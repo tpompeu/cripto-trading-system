@@ -1,0 +1,58 @@
+# infra/storage.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cria os recursos de armazenamento: S3 Bucket e DynamoDB Table.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'CryptoTradingSystem'
+
+Resources:
+  # Bucket S3 para armazenar dados, modelos, logs e checkpoints
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::AccountId}-${ProjectName}-data-bucket'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - ID: DeleteOldData
+            Status: Enabled
+            ExpirationInDays: 1825 # 5 anos
+          - ID: DeleteOldCheckpoints
+            Prefix: "walk_forward_checkpoints/"
+            Status: Enabled
+            ExpirationInDays: 30
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # Tabela DynamoDB para gerenciar o estado das estratégias e execuções
+  StrategyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref ProjectName
+      AttributeDefinitions:
+        - AttributeName: "strategy_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "strategy_id"
+          KeyType: "HASH"
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  DataBucketName:
+    Description: "Nome do S3 Bucket"
+    Value: !Ref DataBucket
+  StrategyTableName:
+    Description: "Nome da tabela DynamoDB"
+    Value: !Ref StrategyTable

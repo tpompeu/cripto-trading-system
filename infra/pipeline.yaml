@@ -1,0 +1,107 @@
+# infra/pipeline.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cria o AWS CodePipeline para CI/CD do projeto.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'CryptoTradingSystem'
+  GitHubRepo:
+    Type: String
+    Description: "Repositório GitHub no formato 'owner/repo'"
+    Default: 'tpompeu/cripto-trading-system'
+  GitHubBranch:
+    Type: String
+    Default: 'main'
+  CodeBuildRoleArn:
+    Type: String
+  CloudFormationRoleArn:
+    Type: String
+  CodePipelineRoleArn:
+    Type: String
+
+Resources:
+  # Bucket S3 para os artefatos do pipeline
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${aws::accountId}-${projectname}-pipeline-artifacts'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Projeto do CodeBuild para empacotar e preparar os templates
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${ProjectName}-BuildProject'
+      ServiceRole: !Ref CodeBuildRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: 'buildspec.yml'
+
+  # O Pipeline principal
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Ref ProjectName
+      RoleArn: !Ref CodePipelineRoleArn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHub_Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: '1'
+              Configuration:
+                Owner: !Select [0, !Split ['/', !Ref GitHubRepo]]
+                Repo: !Select [1, !Split ['/', !Ref GitHubRepo]]
+                Branch: !Ref GitHubBranch
+                OAuthToken: '{{resolve:secrets-manager:github-token:SecretString:token}}' # Crie um segredo chamado 'github-token'
+              OutputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+        - Name: Deploy
+          Actions:
+            - Name: Deploy_Infrastructure
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              Configuration:
+                ActionMode: CREATE_UPDATE_STACK
+                StackName: !Sub '${ProjectName}-MainStack'
+                TemplatePath: 'BuildOutput::main.yaml'
+                RoleArn: !Ref CloudFormationRoleArn
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
