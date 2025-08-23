@@ -1,0 +1,74 @@
+# infra/main.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Pilha principal que orquestra a implantação de todos os recursos do Crypto Trading System.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'CryptoTradingSystem'
+  GitHubRepo:
+    Type: String
+    Description: "Repositório GitHub no formato 'owner/repo'"
+    Default: 'tpompeu/cripto-trading-system'
+  S3ArtifactBucket:
+    Type: String
+    Description: "Bucket onde o CodePipeline armazena os artefatos de build"
+  S3ArtifactKey:
+    Type: String
+    Description: "Caminho (.zip) para o código-fonte no bucket de artefatos"
+
+Resources:
+  # Pilha de IAM
+  IAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./iam.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        GitHubRepo: !Ref GitHubRepo
+
+  # Pilha de Storage
+  StorageStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./storage.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+
+  # Pilha de Compute (Lambda)
+  ComputeLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./compute_lambda.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        DataBucketName: !GetAtt StorageStack.Outputs.DataBucketName
+        StrategyTableName: !GetAtt StorageStack.Outputs.StrategyTableName
+        S3ArtifactBucket: !Ref S3ArtifactBucket
+        S3ArtifactKey: !Ref S3ArtifactKey
+    DependsOn:
+      - StorageStack
+      - IAMStack
+
+  # Pilha de Events
+  EventsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./events.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        DataDownloaderFunctionArn: !GetAtt ComputeLambdaStack.Outputs.DataDownloaderFunctionArn
+    DependsOn:
+      - ComputeLambdaStack
+
+  # A pilha do Pipeline é implantada separadamente ou na primeira vez manualmente.
+  # Se incluída aqui, cria um ciclo (pipeline implanta a pilha que contém o pipeline).
+  # É melhor manter a pilha do pipeline separada.
+
+Outputs:
+  DataBucketName:
+    Description: "Nome do S3 Bucket"
+    Value: !GetAtt StorageStack.Outputs.DataBucketName
+  StrategyTableName:
+    Description: "Nome da tabela DynamoDB"
+    Value: !GetAtt StorageStack.Outputs.StrategyTableName

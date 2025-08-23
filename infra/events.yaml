@@ -1,0 +1,32 @@
+# infra/events.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cria as regras do EventBridge para acionar as funções Lambda.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'CryptoTradingSystem'
+  DataDownloaderFunctionArn:
+    Type: String
+
+Resources:
+  # Regra para acionar o data_downloader diariamente
+  DataDownloaderScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-DataDownloaderRule'
+      Description: "Aciona o download de dados diariamente às 00:00 UTC"
+      ScheduleExpression: "cron(0 0 * * ? *)" # Todos os dias à meia-noite UTC
+      State: ENABLED
+      Targets:
+        - Arn: !Ref DataDownloaderFunctionArn
+          Id: "DataDownloaderTarget"
+
+  # Permissão para o EventBridge invocar a Lambda
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DataDownloaderFunctionArn
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt DataDownloaderScheduleRule.Arn

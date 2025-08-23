@@ -1,0 +1,106 @@
+# infra/compute_lambda.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cria as funções AWS Lambda e a Lambda Layer compartilhada.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'CryptoTradingSystem'
+  DataBucketName:
+    Type: String
+  StrategyTableName:
+    Type: String
+  S3ArtifactBucket:
+    Type: String
+    Description: "Bucket onde o CodePipeline armazena os artefatos de build (código-fonte .zip)"
+  S3ArtifactKey:
+    Type: String
+    Description: "Caminho (.zip) para o código-fonte no bucket de artefatos"
+
+Resources:
+  # IAM Role para as funções Lambda
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-LambdaExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: LambdaBasePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${DataBucketName}'
+                  - !Sub 'arn:aws:s3:::${DataBucketName}/*'
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${StrategyTableName}'
+              - Effect: Allow
+                Action:
+                  - 'ssm:GetParameter'
+                  - 'ssm:GetParameters'
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/trading_system/*'
+
+  # Lambda Layer para dependências comuns (pandas, lightgbm, etc.)
+  # O conteúdo será carregado pelo pipeline de CI/CD
+  SharedLambdaLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Sub '${ProjectName}-SharedLayer'
+      Description: "Dependências compartilhadas para as funções Lambda do projeto."
+      Content:
+        S3Bucket: !Ref S3ArtifactBucket
+        S3Key: 'layers/dependencies.zip' # O CI/CD será responsável por criar e carregar este .zip
+      CompatibleRuntimes:
+        - python3.9
+
+  # Função Lambda: data_downloader.py
+  DataDownloaderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-DataDownloader'
+      Handler: 'src.data_downloader.lambda_handler'
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3ArtifactBucket
+        S3Key: !Ref S3ArtifactKey
+      Layers:
+        - !Ref SharedLambdaLayer
+      Timeout: 300 # 5 minutos
+      MemorySize: 256
+      Environment:
+        Variables:
+          DATA_BUCKET: !Ref DataBucketName
+          STRATEGY_TABLE: !Ref StrategyTableName
+          BINANCE_API_KEY_PARAM: '/trading_system/environment/binance_api_key'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  DataDownloaderFunctionArn:
+    Description: "ARN da função Lambda DataDownloader"
+    Value: !GetAtt DataDownloaderFunction.Arn
