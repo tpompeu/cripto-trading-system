@@ -49,6 +49,9 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource: "*"
+              - Effect: Allow
+                Action: "codeconnections:UseConnection"
+                Resource: !Sub "arn:aws:codeconnections:${AWS::Region}:${AWS::AccountId}:connection/*"
 
   # Role para o serviço CodeBuild
   CodeBuildRole:
