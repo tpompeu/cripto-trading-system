@@ -9,12 +9,12 @@ Parameters:
 
 Resources:
   # Pilha de IAM
-  IAMStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: './iam.yaml'
-      Parameters:
-        ProjectName: !Ref ProjectName
+  #IAMStack:
+  #  Type: AWS::CloudFormation::Stack
+  #  Properties:
+  #    TemplateURL: './iam.yaml'
+  #    Parameters:
+  #      ProjectName: !Ref ProjectName
 
   # Pilha de Storage
   StorageStack:
