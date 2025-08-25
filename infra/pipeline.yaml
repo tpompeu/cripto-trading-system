@@ -18,6 +18,13 @@ Parameters:
   ArtifactsBucket:
     Type: String
     Description: 'S3 bucket for pipeline artifacts. Must be created manually beforehand.'
+  CodeBuildRoleArn:
+    Type: String
+    Description: 'ARN of the CodeBuild Role from IAM stack'
+  CloudFormationRoleArn:
+    Type: String
+    Description: 'ARN of the CloudFormation Role from IAM stack'
+
 
 Resources:
   # Conexão com o GitHub via CodeStar Connections
@@ -70,7 +77,8 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub '${ProjectName}-BuildProject'
-      ServiceRole: !GetAtt CodeBuildRole.Arn
+      #ServiceRole: !GetAtt CodeBuildRole.Arn
+      ServiceRole: !Ref CodeBuildRoleArn  # Use the imported ARN instead
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -137,7 +145,8 @@ Resources:
                 ActionMode: CREATE_UPDATE
                 StackName: !Sub '${ProjectName}-MainStack'
                 TemplatePath: 'BuildArtifact::packaged-main.yaml'
-                RoleArn: !GetAtt CloudFormationRole.Arn
+                #RoleArn: !GetAtt CloudFormationRole.Arn
+                RoleArn: !Ref CloudFormationRoleArn  # Use the imported ARN
                 Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
               InputArtifacts:
                 - Name: BuildArtifact
