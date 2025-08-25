@@ -86,6 +86,7 @@ Resources:
                   - 'logs:*'
                   - 'cloudformation:CreateStack'
                   - 'cloudformation:DeleteStack'
+                  - 'cloudformation:UpdateStack'
                   - 'scheduler:GetSchedule'
                   - 'scheduler:CreateSchedule'
                 Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
