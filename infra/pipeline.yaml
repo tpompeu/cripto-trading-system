@@ -1,76 +1,40 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CI/CD Pipeline for the Crypto Trading System. StackName: crypto-trading-pipeline-stack'
+Description: 'CI/CD Pipeline for the Crypto Trading System. Deployed as a nested stack from main.yaml.'
 
 Parameters:
   ProjectName:
     Type: String
-    Default: 'CryptoTradingSystem'
   GitHubOwner:
     Type: String
-    Description: 'Your GitHub username or organization name.'
   GitHubRepo:
     Type: String
-    Description: 'The name of the GitHub repository.'
   GitHubBranch:
     Type: String
     Default: 'main'
-    Description: 'The branch to trigger the pipeline from.'
   ArtifactsBucket:
     Type: String
-    Description: 'S3 bucket for pipeline artifacts. Must be created manually beforehand.'
+  # Parâmetros para receber os ARNs das roles
+  CodePipelineRoleArn:
+    Type: String
+  CodeBuildRoleArn:
+    Type: String
+  CloudFormationRoleArn:
+    Type: String
 
 Resources:
-  # Conexão com o GitHub via CodeStar Connections
+  # Conexão com o GitHub
   GitHubConnection:
     Type: AWS::CodeStarConnections::Connection
     Properties:
       ConnectionName: !Sub '${ProjectName}-GitConnect'
       ProviderType: GitHub
 
-  # Role para o CodePipeline
-  CodePipelineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-CodePipelineRole'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codepipeline.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: !Sub '${ProjectName}-CodePipelinePolicy'
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 's3:GetObject'
-                  - 's3:PutObject'
-                  - 's3:ListBucket'
-                Resource: !Sub 'arn:aws:s3:::${ArtifactsBucket}/*'
-              - Effect: Allow
-                Action:
-                  - 'codestar-connections:UseConnection'
-                Resource: !Ref GitHubConnection
-              - Effect: Allow
-                Action:
-                  - 'codebuild:StartBuild'
-                  - 'codebuild:BatchGetBuilds'
-                Resource: !GetAtt CodeBuildProject.Arn
-              - Effect: Allow
-                Action:
-                  - 'cloudformation:*'
-                  - 'iam:PassRole'
-                Resource: '*'
-
   # Projeto do CodeBuild
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub '${ProjectName}-BuildProject'
-      ServiceRole: !GetAtt CodeBuildRole.Arn
+      ServiceRole: !Ref CodeBuildRoleArn # Usando a role passada como parâmetro
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -92,7 +56,7 @@ Resources:
     Type: AWS::CodePipeline::Pipeline
     Properties:
       Name: !Sub '${ProjectName}-Pipeline'
-      RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Ref CodePipelineRoleArn # Usando a role passada como parâmetro
       ArtifactStore:
         Type: S3
         Location: !Ref ArtifactsBucket
@@ -125,7 +89,7 @@ Resources:
                 - Name: SourceArtifact
               OutputArtifacts:
                 - Name: BuildArtifact
-        - Name: Deploy
+        - Name: Deploy-Main
           Actions:
             - Name: Deploy_Infrastructure
               ActionTypeId:
@@ -137,44 +101,17 @@ Resources:
                 ActionMode: CREATE_UPDATE
                 StackName: !Sub '${ProjectName}-MainStack'
                 TemplatePath: 'BuildArtifact::packaged-main.yaml'
-                RoleArn: !GetAtt CloudFormationRole.Arn
+                RoleArn: !Ref CloudFormationRoleArn # Usando a role passada como parâmetro
                 Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
+                ParameterOverrides: !Sub |
+                  {
+                    "ProjectName": "${ProjectName}",
+                    "GitHubOwner": "${GitHubOwner}",
+                    "GitHubRepo": "${GitHubRepo}",
+                    "ArtifactsBucket": "${ArtifactsBucket}"
+                  }
               InputArtifacts:
                 - Name: BuildArtifact
-
-  # Roles importadas da pilha IAM
-  #CodeBuildRole:
-  #  Type: AWS::IAM::Role
-  #  Properties:
-  #    RoleName: !Sub '${ProjectName}-CodeBuildRole-From-Pipeline'
-  #    AssumeRolePolicyDocument: { "Version": "2012-10-17", "Statement": [{ "Effect": "Allow", "Principal": { "Service": "codebuild.amazonaws.com" }, "Action": "sts:AssumeRole" }] }
-CodeBuildRole:
-  Type: AWS::IAM::Role
-  Properties:
-    RoleName: !Sub '${ProjectName}-CodeBuildRole-From-Pipeline'
-    AssumeRolePolicyDocument:
-      Version: '2012-10-17'
-      Statement:
-        - Effect: Allow
-          Principal:
-            Service: codebuild.amazonaws.com
-          Action: sts:AssumeRole
-    Policies:
-      - PolicyName: !Sub '${ProjectName}-CodeBuildLogsPolicy'
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-BuildProject:*'
-  CloudFormationRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-CloudFormationRole-From-Pipeline'
-      AssumeRolePolicyDocument: { "Version": "2012-10-17", "Statement": [{ "Effect": "Allow", "Principal": { "Service": "cloudformation.amazonaws.com" }, "Action": "sts:AssumeRole" }] }
 
 Outputs:
   PipelineName:
