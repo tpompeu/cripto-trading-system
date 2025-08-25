@@ -6,8 +6,49 @@ Parameters:
     Type: String
     Default: 'CryptoTradingSystem'
     Description: 'A prefix for all created resources.'
+  ArtifactsBucketName:
+    Type: String
+    Description: 'Name of the S3 bucket for pipeline artifacts.'
 
 Resources:
+  # Role para o AWS CodePipeline
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-CodePipelineRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-CodePipelinePolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                Resource: !Sub 'arn:aws:s3:::${ArtifactsBucketName}/*'
+              - Effect: Allow
+                Action:
+                  - 'codestar-connections:UseConnection'
+                Resource: '*' # A conexão é criada dinamicamente
+              - Effect: Allow
+                Action:
+                  - 'codebuild:StartBuild'
+                  - 'codebuild:BatchGetBuilds'
+                Resource: '*' # O projeto de build é criado dinamicamente
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:*'
+                  - 'iam:PassRole'
+                Resource: '*'
+
   # Role para o AWS CodeBuild
   CodeBuildRole:
     Type: AWS::IAM::Role
@@ -30,17 +71,17 @@ Resources:
                   - 's3:GetObject'
                   - 's3:PutObject'
                   - 's3:ListBucket'
-                Resource: '*' # Limitado ao bucket de artefatos pelo CodePipeline
+                Resource: !Sub 'arn:aws:s3:::${ArtifactsBucketName}/*'
               - Effect: Allow
                 Action:
                   - 'logs:CreateLogGroup'
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
-                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-BuildProject:*'
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-BuildProject:log-stream:*'
               - Effect: Allow
                 Action:
-                  - 'cloudformation:*'
-                Resource: '*' # Necessário para empacotar e implantar
+                  - 'cloudformation:Package'
+                Resource: '*'
 
   # Role para o AWS CloudFormation
   CloudFormationRole:
@@ -67,12 +108,13 @@ Resources:
                   - 'lambda:*'
                   - 'sqs:*'
                   - 'events:*'
+                  - 'scheduler:*'
                   - 'ec2:*'
                   - 'ssm:*'
                   - 'logs:*'
-                Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
+                Resource: '*'
 
-  # Role para as Funções Lambda (Exemplo genérico, será refinado nas próximas fases)
+  # Role para as Funções Lambda
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -96,7 +138,7 @@ Resources:
                   - 's3:GetObject'
                   - 's3:PutObject'
                   - 's3:ListBucket'
-                Resource: '*' # Será restringido ao bucket do projeto
+                Resource: '*'
               - Effect: Allow
                 Action:
                   - 'dynamodb:Query'
@@ -104,7 +146,7 @@ Resources:
                   - 'dynamodb:GetItem'
                   - 'dynamodb:PutItem'
                   - 'dynamodb:UpdateItem'
-                Resource: '*' # Será restringido à tabela do projeto
+                Resource: '*'
               - Effect: Allow
                 Action:
                   - 'ssm:GetParameter'
@@ -112,6 +154,9 @@ Resources:
                 Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/trading_system/*'
 
 Outputs:
+  CodePipelineRoleArn:
+    Description: 'ARN of the CodePipeline Role'
+    Value: !GetAtt CodePipelineRole.Arn
   CodeBuildRoleArn:
     Description: 'ARN of the CodeBuild Role'
     Value: !GetAtt CodeBuildRole.Arn
