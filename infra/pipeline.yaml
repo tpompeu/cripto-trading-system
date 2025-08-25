@@ -143,11 +143,33 @@ Resources:
                 - Name: BuildArtifact
 
   # Roles importadas da pilha IAM
-  CodeBuildRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-CodeBuildRole-From-Pipeline'
-      AssumeRolePolicyDocument: { "Version": "2012-10-17", "Statement": [{ "Effect": "Allow", "Principal": { "Service": "codebuild.amazonaws.com" }, "Action": "sts:AssumeRole" }] }
+  #CodeBuildRole:
+  #  Type: AWS::IAM::Role
+  #  Properties:
+  #    RoleName: !Sub '${ProjectName}-CodeBuildRole-From-Pipeline'
+  #    AssumeRolePolicyDocument: { "Version": "2012-10-17", "Statement": [{ "Effect": "Allow", "Principal": { "Service": "codebuild.amazonaws.com" }, "Action": "sts:AssumeRole" }] }
+CodeBuildRole:
+  Type: AWS::IAM::Role
+  Properties:
+    RoleName: !Sub '${ProjectName}-CodeBuildRole-From-Pipeline'
+    AssumeRolePolicyDocument:
+      Version: '2012-10-17'
+      Statement:
+        - Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+    Policies:
+      - PolicyName: !Sub '${ProjectName}-CodeBuildLogsPolicy'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-BuildProject:*'
   CloudFormationRole:
     Type: AWS::IAM::Role
     Properties:
