@@ -32,6 +32,7 @@ Resources:
       Parameters:
         ProjectName: !Ref ProjectName
         LambdaExecutionRoleArn: !GetAtt IAMStack.Outputs.LambdaExecutionRoleArn
+        DataBucketName: !GetAtt StorageStack.Outputs.DataBucketName
     DependsOn:
       - IAMStack
       - StorageStack
@@ -46,3 +47,9 @@ Outputs:
   ValidationQueueUrl:
     Description: 'URL of the SQS validation queue'
     Value: !GetAtt ProcessingStack.Outputs.ValidationQueueUrl
+  DataDownloaderFunctionArn:
+    Description: 'ARN of the data downloader Lambda function'
+    Value: !GetAtt ProcessingStack.Outputs.DataDownloaderFunctionArn
+  DataDownloaderFunctionName:
+    Description: 'Name of the data downloader Lambda function'
+    Value: !GetAtt ProcessingStack.Outputs.DataDownloaderFunctionName
