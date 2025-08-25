@@ -86,6 +86,7 @@ Resources:
                   - 'logs:*'
                   - 'cloudformation:CreateStack'
                   - 'cloudformation:DeleteStack'
+                  - 'scheduler:GetSchedule'
                 Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
 
   # Conexão com o GitHub via CodeStar Connections
@@ -205,7 +206,7 @@ Resources:
                 ActionMode: CREATE_UPDATE
                 StackName: !Sub '${ProjectName}-MainStack'
                 TemplatePath: 'BuildArtifact::packaged-main.yaml'
-                RoleArn: !Ref CloudFormationRoleArn
+                RoleArn: !GetAtt CloudFormationRole.Arn
                 Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
               InputArtifacts:
                 - Name: BuildArtifact
