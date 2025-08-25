@@ -1,58 +1,56 @@
-# infra/storage.yaml
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Cria os recursos de armazenamento: S3 Bucket e DynamoDB Table.'
+Description: 'Storage resources (S3, DynamoDB) for the Crypto Trading System. StackName: crypto-trading-storage'
 
 Parameters:
   ProjectName:
     Type: String
     Default: 'CryptoTradingSystem'
+    Description: 'A prefix for all created resources.'
 
 Resources:
-  # Bucket S3 para armazenar dados, modelos, logs e checkpoints
+  # Bucket S3 para dados, modelos, logs, etc.
   DataBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AWS::AccountId}-${ProjectName}-data-bucket'
+      BucketName: !Sub 'crypto-trading-data-${aws::accountId}-${aws::region}'
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldData
+            Status: Enabled
+            ExpirationInDays: 1825 # 5 anos
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-      VersioningConfiguration:
-        Status: Enabled
-      LifecycleConfiguration:
-        Rules:
-          - ID: DeleteOldData
-            Status: Enabled
-            ExpirationInDays: 1825 # 5 anos
-          - ID: DeleteOldCheckpoints
-            Prefix: "walk_forward_checkpoints/"
-            Status: Enabled
-            ExpirationInDays: 30
       Tags:
         - Key: Project
           Value: !Ref ProjectName
 
-  # Tabela DynamoDB para gerenciar o estado das estratégias e execuções
+  # Tabela DynamoDB para gerenciar o estado das estratégias
   StrategyTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Ref ProjectName
+      TableName: !Sub '${ProjectName}-Strategies'
       AttributeDefinitions:
-        - AttributeName: "strategy_id"
-          AttributeType: "S"
+        - AttributeName: 'strategy_id'
+          AttributeType: 'S'
       KeySchema:
-        - AttributeName: "strategy_id"
-          KeyType: "HASH"
-      BillingMode: PAY_PER_REQUEST
+        - AttributeName: 'strategy_id'
+          KeyType: 'HASH'
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
       Tags:
         - Key: Project
           Value: !Ref ProjectName
 
 Outputs:
   DataBucketName:
-    Description: "Nome do S3 Bucket"
+    Description: 'Name of the S3 data bucket'
     Value: !Ref DataBucket
   StrategyTableName:
-    Description: "Nome da tabela DynamoDB"
+    Description: 'Name of the DynamoDB strategy table'
     Value: !Ref StrategyTable

@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Processing resources (Lambda, SQS, EventBridge) for the Crypto Trading System. StackName: crypto-trading-processing'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'CryptoTradingSystem'
+    Description: 'A prefix for all created resources.'
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: 'ARN of the IAM Role for Lambda functions'
+
+Resources:
+  # Fila SQS para jobs de validação
+  ValidationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-ValidationQueue.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      VisibilityTimeout: 900 # 15 minutos
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # Agendador de Eventos (EventBridge Scheduler) para o data_downloader
+  DataDownloaderSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub '${ProjectName}-DailyDataDownload'
+      Description: 'Triggers the data downloader Lambda daily at 00:00 UTC'
+      ScheduleExpression: 'cron(0 0 * * ? *)'
+      ScheduleExpressionTimezone: 'UTC'
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      State: 'ENABLED'
+      Target:
+        Arn: 'arn:aws:lambda:us-east-1:123456789012:function:placeholder' # Será atualizado na Fase 2
+        RoleArn: !Ref LambdaExecutionRoleArn # Reutilizando a role, mas idealmente seria uma role específica
+
+Outputs:
+  ValidationQueueUrl:
+    Description: 'URL of the SQS validation queue'
+    Value: !Ref ValidationQueue
+  ValidationQueueArn:
+    Description: 'ARN of the SQS validation queue'
+    Value: !GetAtt ValidationQueue.Arn
