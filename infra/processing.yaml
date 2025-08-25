@@ -18,10 +18,10 @@ Resources:
   ValidationQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${ProjectName}-ValidationQueue.fifo'
-      FifoQueue: true
-      ContentBasedDeduplication: true
-      VisibilityTimeout: 900 # 15 minutos
+      QueueName: !Sub '${ProjectName}-ValidationQueue'
+      #FifoQueue: true
+      #ContentBasedDeduplication: true
+      #VisibilityTimeout: 900 # 15 minutos
       Tags:
         - Key: Project
           Value: !Ref ProjectName
