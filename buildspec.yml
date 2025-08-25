@@ -23,14 +23,16 @@ phases:
   build:
     commands:
       - echo "Packaging CloudFormation templates..."
-      - aws cloudformation package \
-          --template-file infra/main.yaml \
-          --s3-bucket ${ARTIFACTS_BUCKET} \
-          --s3-prefix "cloudformation-templates" \
-          --output-template-file packaged-main.yaml
+      - >
+        aws cloudformation package
+        --template-file infra/main.yaml
+        --s3-bucket ${ARTIFACTS_BUCKET}
+        --s3-prefix "cloudformation-templates"
+        --output-template-file packaged-main.yaml
       - echo "Uploading Lambda code to S3..."
-      - aws s3 cp data_downloader.zip \
-          s3://${ARTIFACTS_BUCKET}/lambda-code/data_downloader.zip
+      - >
+        aws s3 cp data_downloader.zip
+        s3://${ARTIFACTS_BUCKET}/lambda-code/data_downloader.zip
       - echo "Build completed successfully"
 
 artifacts:
