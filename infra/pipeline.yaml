@@ -87,6 +87,7 @@ Resources:
                   - 'cloudformation:CreateStack'
                   - 'cloudformation:DeleteStack'
                   - 'scheduler:GetSchedule'
+                  - 'scheduler:CreateSchedule'
                 Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
 
   # Conexão com o GitHub via CodeStar Connections
