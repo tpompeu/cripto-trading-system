@@ -1,0 +1,52 @@
+{
+  "project_name": "CryptoTradingSystem",
+  "version": "2.01",
+  "aws_region": "us-east-1",
+  "trading_config": {
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT", 
+      "ADAUSDT",
+      "DOTUSDT",
+      "LINKUSDT",
+      "BNBUSDT",
+      "SOLUSDT",
+      "MATICUSDT"
+    ],
+    "timeframes": [
+      "1h",
+      "4h", 
+      "1d"
+    ],
+    "lookback_days": 365,
+    "data_collection_schedule": "cron(0 0 * * ? *)"
+  },
+  
+  "aws_resources": {
+    "data_bucket_prefix": "crypto-trading-data",
+    "lambda_timeout": 900,
+    "lambda_memory": 512,
+    "lambda_runtime": "python3.11"
+  },
+  
+  "binance_api": {
+    "base_url": "https://api.binance.com",
+    "rate_limit_requests_per_minute": 1200,
+    "max_retries": 3,
+    "retry_delay_seconds": 1
+  },
+  
+  "data_processing": {
+    "file_formats": ["parquet", "csv"],
+    "compression": "snappy",
+    "partition_by": ["symbol", "interval", "date"],
+    "data_retention_days": 1825
+  },
+  
+  "monitoring": {
+    "log_level": "INFO",
+    "enable_detailed_logging": true,
+    "cloudwatch_log_retention_days": 30
+  }
+}
+

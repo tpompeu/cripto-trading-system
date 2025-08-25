@@ -9,6 +9,9 @@ Parameters:
   LambdaExecutionRoleArn:
     Type: String
     Description: 'ARN of the IAM Role for Lambda functions'
+  DataBucketName:
+    Type: String
+    Description: 'Name of the S3 bucket for data storage'
 
 Resources:
   # Fila SQS para jobs de validação
@@ -23,6 +26,64 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
+  # CloudWatch Log Group para a função Lambda
+  DataDownloaderLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-DataDownloader'
+      RetentionInDays: 30
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # Função Lambda para download de dados
+  DataDownloaderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-DataDownloader'
+      Runtime: python3.11
+      Handler: data_downloader.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 900  # 15 minutos
+      MemorySize: 512
+      ReservedConcurrencyLimit: 1  # Evita execuções paralelas
+      Environment:
+        Variables:
+          DATA_BUCKET: !Ref DataBucketName
+          PROJECT_NAME: !Ref ProjectName
+          LOG_LEVEL: INFO
+      Code:
+        ZipFile: |
+          import json
+          import logging
+          
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          
+          def lambda_handler(event, context):
+              logger.info("Placeholder function - será substituída pelo código real")
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps({
+                      'message': 'Placeholder function executed',
+                      'event': event
+                  })
+              }
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+    DependsOn:
+      - DataDownloaderLogGroup
+
+  # Permissão para o EventBridge Scheduler invocar a Lambda
+  DataDownloaderSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DataDownloaderFunction
+      Action: lambda:InvokeFunction
+      Principal: scheduler.amazonaws.com
+      SourceArn: !GetAtt DataDownloaderSchedule.Arn
+
   # Agendador de Eventos (EventBridge Scheduler) para o data_downloader
   DataDownloaderSchedule:
     Type: AWS::Scheduler::Schedule
@@ -35,8 +96,23 @@ Resources:
         Mode: 'OFF'
       State: 'ENABLED'
       Target:
-        Arn: 'arn:aws:lambda:us-east-1:123456789012:function:placeholder' # Será atualizado na Fase 2
-        RoleArn: !Ref LambdaExecutionRoleArn # Reutilizando a role, mas idealmente seria uma role específica
+        Arn: !GetAtt DataDownloaderFunction.Arn
+        RoleArn: !Ref LambdaExecutionRoleArn
+        RetryPolicy:
+          MaximumRetryAttempts: 2
+        DeadLetterConfig:
+          Arn: !GetAtt ValidationQueue.Arn
+    DependsOn:
+      - DataDownloaderFunction
+
+  # Alias para a função Lambda (facilita atualizações)
+  DataDownloaderAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref DataDownloaderFunction
+      FunctionVersion: $LATEST
+      Name: LIVE
+      Description: 'Alias para a versão em produção do data downloader'
 
 Outputs:
   ValidationQueueUrl:
@@ -45,3 +121,13 @@ Outputs:
   ValidationQueueArn:
     Description: 'ARN of the SQS validation queue'
     Value: !GetAtt ValidationQueue.Arn
+  DataDownloaderFunctionArn:
+    Description: 'ARN of the data downloader Lambda function'
+    Value: !GetAtt DataDownloaderFunction.Arn
+  DataDownloaderFunctionName:
+    Description: 'Name of the data downloader Lambda function'
+    Value: !Ref DataDownloaderFunction
+  DataDownloaderScheduleArn:
+    Description: 'ARN of the EventBridge schedule'
+    Value: !GetAtt DataDownloaderSchedule.Arn
+

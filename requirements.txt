@@ -1,0 +1,43 @@
+# Dependências para o Sistema de Trading Quantitativo
+# Versão: 2.01
+
+# AWS SDK
+boto3>=1.34.0
+botocore>=1.34.0
+
+# Manipulação de dados
+pandas>=2.1.0
+numpy>=1.24.0
+pyarrow>=13.0.0  # Para suporte a Parquet
+
+# Requisições HTTP
+requests>=2.31.0
+
+# Processamento de datas
+python-dateutil>=2.8.2
+
+# Logging estruturado
+structlog>=23.1.0
+
+# Validação de dados
+pydantic>=2.0.0
+
+# Análise técnica (para futuras fases)
+ta-lib>=0.4.25
+TA-Lib>=0.4.25
+
+# Machine Learning (para futuras fases)
+lightgbm>=4.0.0
+scikit-learn>=1.3.0
+
+# Testes e qualidade de código
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.7.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# Utilitários
+python-dotenv>=1.0.0
+click>=8.1.0
+
