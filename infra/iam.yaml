@@ -1,59 +1,14 @@
-# infra/iam.yaml
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Cria as Roles do IAM para CodePipeline, CodeBuild e outros serviços.'
+Description: 'IAM Roles and Policies for the Crypto Trading System. StackName: crypto-trading-iam'
 
 Parameters:
   ProjectName:
     Type: String
     Default: 'CryptoTradingSystem'
-  GitHubRepo:
-    Type: String
-    Description: "Repositório GitHub no formato 'owner/repo'"
-    Default: 'tpompeu/cripto-trading-system'
+    Description: 'A prefix for all created resources.'
 
 Resources:
-  # Role para o serviço CodePipeline
-  CodePipelineRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-CodePipelineRole'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codepipeline.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: CodePipelinePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "s3:GetObject"
-                  - "s3:GetObjectVersion"
-                  - "s3:GetBucketVersioning"
-                  - "s3:PutObject"
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - "codebuild:StartBuild"
-                  - "codebuild:BatchGetBuilds"
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - "cloudformation:*"
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - "iam:PassRole"
-                Resource: "*"
-              - Effect: Allow
-                Action: "codeconnections:UseConnection"
-                Resource: !Sub "arn:aws:codeconnections:${AWS::Region}:${AWS::AccountId}:connection/*"
-
-  # Role para o serviço CodeBuild
+  # Role para o AWS CodeBuild
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
@@ -66,33 +21,28 @@ Resources:
               Service: codebuild.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: CodeBuildPolicy
+        - PolicyName: !Sub '${ProjectName}-CodeBuildPolicy'
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - "logs:CreateLogGroup"
-                  - "logs:CreateLogStream"
-                  - "logs:PutLogEvents"
-                Resource: "*"
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                Resource: '*' # Limitado ao bucket de artefatos pelo CodePipeline
               - Effect: Allow
                 Action:
-                  - "s3:PutObject"
-                  - "s3:GetObject"
-                  - "s3:GetObjectVersion"
-                  - "s3:GetBucketAcl"
-                  - "s3:GetBucketLocation"
-                Resource: "*"
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-BuildProject:*'
               - Effect: Allow
                 Action:
-                  - "codebuild:CreateReportGroup"
-                  - "codebuild:CreateReport"
-                  - "codebuild:UpdateReport"
-                  - "codebuild:BatchPutTestCases"
-                Resource: "*"
+                  - 'cloudformation:*'
+                Resource: '*' # Necessário para empacotar e implantar
 
-  # Role para o CloudFormation executar as mudanças
+  # Role para o AWS CloudFormation
   CloudFormationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -105,18 +55,69 @@ Resources:
               Service: cloudformation.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: CloudFormationExecutionPolicy
+        - PolicyName: !Sub '${ProjectName}-CloudFormationExecutionPolicy'
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: "*"
-                Resource: "*" # Simplificado para o início, pode ser restringido depois
+                Action:
+                  - 'iam:*'
+                  - 's3:*'
+                  - 'dynamodb:*'
+                  - 'lambda:*'
+                  - 'sqs:*'
+                  - 'events:*'
+                  - 'ec2:*'
+                  - 'ssm:*'
+                  - 'logs:*'
+                Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
+
+  # Role para as Funções Lambda (Exemplo genérico, será refinado nas próximas fases)
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-LambdaExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-LambdaCustomPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                Resource: '*' # Será restringido ao bucket do projeto
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                Resource: '*' # Será restringido à tabela do projeto
+              - Effect: Allow
+                Action:
+                  - 'ssm:GetParameter'
+                  - 'ssm:GetParameters'
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/trading_system/*'
 
 Outputs:
-  CodePipelineRoleArn:
-    Value: !GetAtt CodePipelineRole.Arn
   CodeBuildRoleArn:
+    Description: 'ARN of the CodeBuild Role'
     Value: !GetAtt CodeBuildRole.Arn
   CloudFormationRoleArn:
+    Description: 'ARN of the CloudFormation Role'
     Value: !GetAtt CloudFormationRole.Arn
+  LambdaExecutionRoleArn:
+    Description: 'ARN of the Lambda Execution Role'
+    Value: !GetAtt LambdaExecutionRole.Arn

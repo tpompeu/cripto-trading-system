@@ -1,32 +1,18 @@
-# buildspec.yml
 version: 0.2
 
 phases:
   install:
     runtime-versions:
-      python: 3.9
-    commands:
-      - echo "Instalando dependências..."
-      - pip install -r requirements.txt -t ./layers/python # Instala no diretório da layer
-      # Otimização da Layer (opcional, mas recomendado)
-      - find ./layers/python -name "__pycache__" -type d -exec rm -r {} +
-      - find ./layers/python -name "*.so" -type f -exec strip {} +
-
+      python: 3.11
   build:
     commands:
-      - echo "Criando o zip da Lambda Layer..."
-      - cd layers && zip -r dependencies.zip . && cd ..
-      - echo "Criando o zip do código da aplicação..."
-      - zip -r application.zip src/ config.json
-
-  post_build:
-    commands:
-      - echo "Carregando artefatos para o S3..."
-      - aws s3 cp layers/dependencies.zip s3://${ARTIFACT_BUCKET}/layers/dependencies.zip
-      - aws s3 cp application.zip s3://${ARTIFACT_BUCKET}/code/application.zip
-      - echo "Empacotando templates do CloudFormation..."
-      - aws cloudformation package --template-file infra/main.yaml --s3-bucket ${ARTIFACT_BUCKET} --output-template-file packaged-main.yaml --use-json
-
+      - echo "Packaging CloudFormation templates..."
+      - |
+        aws cloudformation package \
+          --template-file infra/main.yaml \
+          --s3-bucket ${ARTIFACTS_BUCKET} \
+          --s3-prefix "cloudformation-templates" \
+          --output-template-file packaged-main.yaml
 artifacts:
   files:
     - packaged-main.yaml
