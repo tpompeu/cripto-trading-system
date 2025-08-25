@@ -12,7 +12,7 @@ Resources:
   DataBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'crypto-trading-data-${aws::accountId}-${aws::region}'
+      BucketName: !Sub 'crypto-trading-data-${AWS::AccountId}-${AWS::Region}'
       VersioningConfiguration:
         Status: Enabled
       LifecycleConfiguration:

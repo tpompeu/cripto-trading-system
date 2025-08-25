@@ -70,6 +70,8 @@ Resources:
                   - 'ec2:*'
                   - 'ssm:*'
                   - 'logs:*'
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:DeleteStack'
                 Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
 
   # Role para as Funções Lambda (Exemplo genérico, será refinado nas próximas fases)
