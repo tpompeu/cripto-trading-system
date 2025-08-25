@@ -18,15 +18,76 @@ Parameters:
   ArtifactsBucket:
     Type: String
     Description: 'S3 bucket for pipeline artifacts. Must be created manually beforehand.'
-  CodeBuildRoleArn:
-    Type: String
-    Description: 'ARN of the CodeBuild Role from IAM stack'
-  CloudFormationRoleArn:
-    Type: String
-    Description: 'ARN of the CloudFormation Role from IAM stack'
 
 
 Resources:
+
+  # Role para o AWS CodeBuild
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-CodeBuildRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-CodeBuildPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                Resource: '*' # Limitado ao bucket de artefatos pelo CodePipeline
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-BuildProject:*'
+              - Effect: Allow
+                Action:
+                  - 'cloudformation:*'
+                Resource: '*' # Necessário para empacotar e implantar
+
+  # Role para o AWS CloudFormation
+  CloudFormationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-CloudFormationRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-CloudFormationExecutionPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'iam:*'
+                  - 's3:*'
+                  - 'dynamodb:*'
+                  - 'lambda:*'
+                  - 'sqs:*'
+                  - 'events:*'
+                  - 'ec2:*'
+                  - 'ssm:*'
+                  - 'logs:*'
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:DeleteStack'
+                Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
+
   # Conexão com o GitHub via CodeStar Connections
   GitHubConnection:
     Type: AWS::CodeStarConnections::Connection
@@ -77,8 +138,7 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub '${ProjectName}-BuildProject'
-      #ServiceRole: !GetAtt CodeBuildRole.Arn
-      ServiceRole: !Ref CodeBuildRoleArn  # Use the imported ARN instead
+      ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -145,23 +205,10 @@ Resources:
                 ActionMode: CREATE_UPDATE
                 StackName: !Sub '${ProjectName}-MainStack'
                 TemplatePath: 'BuildArtifact::packaged-main.yaml'
-                #RoleArn: !GetAtt CloudFormationRole.Arn
-                RoleArn: !Ref CloudFormationRoleArn  # Use the imported ARN
+                RoleArn: !Ref CloudFormationRoleArn
                 Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
               InputArtifacts:
                 - Name: BuildArtifact
-
-  # Roles importadas da pilha IAM
-  CodeBuildRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-CodeBuildRole-From-Pipeline'
-      AssumeRolePolicyDocument: { "Version": "2012-10-17", "Statement": [{ "Effect": "Allow", "Principal": { "Service": "codebuild.amazonaws.com" }, "Action": "sts:AssumeRole" }] }
-  CloudFormationRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-CloudFormationRole-From-Pipeline'
-      AssumeRolePolicyDocument: { "Version": "2012-10-17", "Statement": [{ "Effect": "Allow", "Principal": { "Service": "cloudformation.amazonaws.com" }, "Action": "sts:AssumeRole" }] }
 
 Outputs:
   PipelineName:

@@ -8,71 +8,6 @@ Parameters:
     Description: 'A prefix for all created resources.'
 
 Resources:
-  # Role para o AWS CodeBuild
-  CodeBuildRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-CodeBuildRole'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codebuild.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: !Sub '${ProjectName}-CodeBuildPolicy'
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 's3:GetObject'
-                  - 's3:PutObject'
-                  - 's3:ListBucket'
-                Resource: '*' # Limitado ao bucket de artefatos pelo CodePipeline
-              - Effect: Allow
-                Action:
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-BuildProject:*'
-              - Effect: Allow
-                Action:
-                  - 'cloudformation:*'
-                Resource: '*' # Necessário para empacotar e implantar
-
-  # Role para o AWS CloudFormation
-  CloudFormationRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub '${ProjectName}-CloudFormationRole'
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: cloudformation.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: !Sub '${ProjectName}-CloudFormationExecutionPolicy'
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'iam:*'
-                  - 's3:*'
-                  - 'dynamodb:*'
-                  - 'lambda:*'
-                  - 'sqs:*'
-                  - 'events:*'
-                  - 'ec2:*'
-                  - 'ssm:*'
-                  - 'logs:*'
-                  - 'cloudformation:CreateStack'
-                  - 'cloudformation:DeleteStack'
-                Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
 
   # Role para as Funções Lambda (Exemplo genérico, será refinado nas próximas fases)
   LambdaExecutionRole:
@@ -114,12 +49,6 @@ Resources:
                 Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/trading_system/*'
 
 Outputs:
-  CodeBuildRoleArn:
-    Description: 'ARN of the CodeBuild Role'
-    Value: !GetAtt CodeBuildRole.Arn
-  CloudFormationRoleArn:
-    Description: 'ARN of the CloudFormation Role'
-    Value: !GetAtt CloudFormationRole.Arn
   LambdaExecutionRoleArn:
     Description: 'ARN of the Lambda Execution Role'
     Value: !GetAtt LambdaExecutionRole.Arn
