@@ -6,42 +6,15 @@ Parameters:
     Type: String
     Default: 'CryptoTradingSystem'
     Description: 'A prefix for all created resources.'
-  # Parâmetros que serão passados para a pilha do pipeline
-  GitHubOwner:
-    Type: String
-    Description: 'Your GitHub username or organization name.'
-  GitHubRepo:
-    Type: String
-    Description: 'The name of the GitHub repository.'
-  ArtifactsBucket:
-    Type: String
-    Description: 'S3 bucket for pipeline artifacts.'
 
 Resources:
-  # Pilha de IAM (criada primeiro)
+  # Pilha de IAM
   IAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: './iam.yaml'
       Parameters:
         ProjectName: !Ref ProjectName
-
-  # Pilha do Pipeline (agora também é uma pilha aninhada)
-  PipelineStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: './pipeline.yaml'
-      Parameters:
-        ProjectName: !Ref ProjectName
-        GitHubOwner: !Ref GitHubOwner
-        GitHubRepo: !Ref GitHubRepo
-        ArtifactsBucket: !Ref ArtifactsBucket
-        # Passando os ARNs das roles criadas na IAMStack
-        CodeBuildRoleArn: !GetAtt IAMStack.Outputs.CodeBuildRoleArn
-        CloudFormationRoleArn: !GetAtt IAMStack.Outputs.CloudFormationRoleArn
-        CodePipelineRoleArn: !GetAtt IAMStack.Outputs.CodePipelineRoleArn # Adicionamos esta role também
-    DependsOn:
-      - IAMStack
 
   # Pilha de Storage
   StorageStack:
@@ -64,12 +37,12 @@ Resources:
       - StorageStack
 
 Outputs:
-  PipelineName:
-    Description: 'Name of the CodePipeline'
-    Value: !GetAtt PipelineStack.Outputs.PipelineName
   DataBucketName:
     Description: 'S3 Bucket for data storage'
     Value: !GetAtt StorageStack.Outputs.DataBucketName
   StrategyTableName:
     Description: 'DynamoDB table for strategies'
     Value: !GetAtt StorageStack.Outputs.StrategyTableName
+  ValidationQueueUrl:
+    Description: 'URL of the SQS validation queue'
+    Value: !GetAtt ProcessingStack.Outputs.ValidationQueueUrl
