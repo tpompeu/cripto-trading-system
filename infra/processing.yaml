@@ -46,7 +46,7 @@ Resources:
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 900  # 15 minutos
       MemorySize: 512
-      ReservedConcurrentExecutions: 1
+      #ReservedConcurrentExecutions: 1
       Environment:
         Variables:
           DATA_BUCKET: !Ref DataBucketName
