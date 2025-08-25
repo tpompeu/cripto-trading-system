@@ -24,7 +24,7 @@ Resources:
   GitHubConnection:
     Type: AWS::CodeStarConnections::Connection
     Properties:
-      ConnectionName: !Sub '${ProjectName}-GitHubConnection'
+      ConnectionName: !Sub '${ProjectName}-GitConnect'
       ProviderType: GitHub
 
   # Role para o CodePipeline
