@@ -19,9 +19,6 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub '${ProjectName}-ValidationQueue'
-      #FifoQueue: true
-      #ContentBasedDeduplication: true
-      #VisibilityTimeout: 900 # 15 minutos
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -46,7 +43,6 @@ Resources:
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 900  # 15 minutos
       MemorySize: 512
-      #ReservedConcurrentExecutions: 1
       Environment:
         Variables:
           DATA_BUCKET: !Ref DataBucketName
@@ -130,4 +126,3 @@ Outputs:
   DataDownloaderScheduleArn:
     Description: 'ARN of the EventBridge schedule'
     Value: !GetAtt DataDownloaderSchedule.Arn
-
