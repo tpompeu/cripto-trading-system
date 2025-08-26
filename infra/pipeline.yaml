@@ -210,6 +210,11 @@ Resources:
                 TemplatePath: 'BuildArtifact::packaged-main.yaml'
                 RoleArn: !GetAtt CloudFormationRole.Arn
                 Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
+                ParameterOverrides: !Sub |
+                  {
+                    "ProjectName": "${ProjectName}",
+                    "ArtifactsBucket": "${ArtifactsBucket}"
+                  }
               InputArtifacts:
                 - Name: BuildArtifact
 

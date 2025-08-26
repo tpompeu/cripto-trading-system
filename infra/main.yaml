@@ -6,6 +6,9 @@ Parameters:
     Type: String
     Default: 'CryptoTradingSystem'
     Description: 'A prefix for all created resources.'
+  ArtifactsBucket:
+    Type: String
+    Description: 'S3 bucket for pipeline artifacts'
 
 Resources:
   # Pilha de IAM
@@ -33,6 +36,7 @@ Resources:
         ProjectName: !Ref ProjectName
         LambdaExecutionRoleArn: !GetAtt IAMStack.Outputs.LambdaExecutionRoleArn
         DataBucketName: !GetAtt StorageStack.Outputs.DataBucketName
+        ArtifactsBucket: !Ref ArtifactsBucket  # Repassa o bucket de artefatos
     DependsOn:
       - IAMStack
       - StorageStack
