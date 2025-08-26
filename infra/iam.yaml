@@ -37,6 +37,7 @@ Resources:
                   - 's3:GetObject'
                   - 's3:PutObject'
                   - 's3:ListBucket'
+                  - 's3:DeleteObject'  # Necessário para operações de overwrite
                 Resource: '*' # Será restringido ao bucket do projeto
               - Effect: Allow
                 Action:

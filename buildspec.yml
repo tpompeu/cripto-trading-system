@@ -7,7 +7,7 @@ phases:
     commands:
       - echo "Installing dependencies..."
       - pip install --upgrade pip
-      - pip install boto3 requests pandas pyarrow
+      - pip install requests
   
   pre_build:
     commands:
@@ -15,7 +15,7 @@ phases:
       - mkdir -p lambda_package
       - cp src/data_downloader.py lambda_package/
       - cd lambda_package
-      - pip install --target . boto3 requests pandas pyarrow
+      - pip install --target . requests 
       - zip -r ../data_downloader.zip .
       - cd ..
       - echo "Lambda package created - data_downloader.zip"
