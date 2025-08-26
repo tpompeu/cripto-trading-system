@@ -17,15 +17,15 @@ Funcionalidades:
 import json
 import logging
 import os
-import sys
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import boto3
 import pandas as pd
 import requests
 from botocore.exceptions import ClientError
+import awswrangler as wr
 
 # Configuração de logging
 logging.basicConfig(
@@ -246,56 +246,27 @@ class BinanceDataDownloader:
             raise
     
     def save_to_s3(self, df: pd.DataFrame, symbol: str, interval: str) -> bool:
-        """
-        Salva os dados processados no S3 em formato estruturado.
-        
-        Args:
-            df: DataFrame com os dados processados
-            symbol: Par de trading
-            interval: Timeframe
-            
-        Returns:
-            True se salvou com sucesso, False caso contrário
-        """
         try:
-            # Gera o caminho estruturado no S3
             current_date = datetime.now().strftime('%Y-%m-%d')
-            s3_key = f"historical_data/{symbol}/{interval}/{current_date}.parquet"
-            
-            # Converte DataFrame para Parquet (formato eficiente)
-            parquet_buffer = df.to_parquet(index=False, engine='pyarrow')
-            
-            # Upload para S3
-            self.s3_client.put_object(
-                Bucket=self.config['data_bucket'],
-                Key=s3_key,
-                Body=parquet_buffer,
-                ContentType='application/octet-stream',
-                Metadata={
-                    'symbol': symbol,
-                    'interval': interval,
-                    'records_count': str(len(df)),
-                    'download_timestamp': datetime.now().isoformat(),
-                    'data_start': df['timestamp'].min().isoformat(),
-                    'data_end': df['timestamp'].max().isoformat()
-                }
+            s3_path = f"s3://{self.config['data_bucket']}/historical_data/{symbol}/{interval}/{current_date}"
+
+            # Salva em Parquet
+            wr.s3.to_parquet(
+                df=df,
+                path=f"{s3_path}.parquet",
+                index=False
             )
-            
-            logger.info(f"Dados salvos no S3: s3://{self.config['data_bucket']}/{s3_key}")
-            
-            # Também salva uma cópia em CSV para facilitar análises manuais
-            csv_key = s3_key.replace('.parquet', '.csv')
-            csv_buffer = df.to_csv(index=False).encode('utf-8')
-            
-            self.s3_client.put_object(
-                Bucket=self.config['data_bucket'],
-                Key=csv_key,
-                Body=csv_buffer,
-                ContentType='text/csv'
+
+            # Salva em CSV (opcional)
+            wr.s3.to_csv(
+                df=df,
+                path=f"{s3_path}.csv",
+                index=False
             )
-            
+
+            logger.info(f"Dados salvos no S3: {s3_path}[.parquet/.csv]")
             return True
-            
+
         except Exception as e:
             logger.error(f"Erro ao salvar dados no S3: {str(e)}")
             return False

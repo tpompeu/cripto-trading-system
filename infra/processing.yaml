@@ -15,6 +15,20 @@ Parameters:
   ArtifactsBucket:  # Novo parâmetro
     Type: String
 
+Mappings:
+  LayerArnMap:
+    us-east-1:
+      LayerArn: arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python311:10
+    us-east-2:
+      LayerArn: arn:aws:lambda:us-east-2:336392948345:layer:AWSSDKPandas-Python311:10
+    us-west-1:
+      LayerArn: arn:aws:lambda:us-west-1:336392948345:layer:AWSSDKPandas-Python311:10
+    us-west-2:
+      LayerArn: arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python311:10
+    sa-east-1:
+      LayerArn: arn:aws:lambda:sa-east-1:336392948345:layer:AWSSDKPandas-Python311:10
+    # Adicione outras regiões conforme necessário
+
 Resources:
   # Fila SQS para jobs de validação
   ValidationQueue:
@@ -45,6 +59,8 @@ Resources:
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 900  # 15 minutos
       MemorySize: 512
+      Layers:
+        - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
       Environment:
         Variables:
           DATA_BUCKET: !Ref DataBucketName
