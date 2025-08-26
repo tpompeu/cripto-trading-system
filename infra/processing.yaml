@@ -12,6 +12,8 @@ Parameters:
   DataBucketName:
     Type: String
     Description: 'Name of the S3 bucket for data storage'
+  ArtifactsBucket:  # Novo parâmetro
+    Type: String
 
 Resources:
   # Fila SQS para jobs de validação
@@ -49,22 +51,8 @@ Resources:
           PROJECT_NAME: !Ref ProjectName
           LOG_LEVEL: INFO
       Code:
-        ZipFile: |
-          import json
-          import logging
-          
-          logger = logging.getLogger()
-          logger.setLevel(logging.INFO)
-          
-          def lambda_handler(event, context):
-              logger.info("Placeholder function - será substituída pelo código real")
-              return {
-                  'statusCode': 200,
-                  'body': json.dumps({
-                      'message': 'Placeholder function executed',
-                      'event': event
-                  })
-              }
+        S3Bucket: !Sub '${ArtifactsBucket}'  # Bucket de artefatos do pipeline
+        S3Key: lambda-code/data_downloader.zip  # Caminho do código compilado
       Tags:
         - Key: Project
           Value: !Ref ProjectName
