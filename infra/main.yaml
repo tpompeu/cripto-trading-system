@@ -11,6 +11,15 @@ Parameters:
     Description: 'S3 bucket for pipeline artifacts'
 
 Resources:
+
+  # VPC
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: './network.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+
   # Pilha de IAM
   IAMStack:
     Type: AWS::CloudFormation::Stack
@@ -37,9 +46,14 @@ Resources:
         LambdaExecutionRoleArn: !GetAtt IAMStack.Outputs.LambdaExecutionRoleArn
         DataBucketName: !GetAtt StorageStack.Outputs.DataBucketName
         ArtifactsBucket: !Ref ArtifactsBucket  # Repassa o bucket de artefatos
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        PrivateSubnet1Id: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
+        PrivateSubnet2Id: !GetAtt NetworkStack.Outputs.PrivateSubnet2Id
+        LambdaSecurityGroupId: !GetAtt NetworkStack.Outputs.LambdaSecurityGroupId
     DependsOn:
       - IAMStack
       - StorageStack
+      - NetworkStack
 
 Outputs:
   DataBucketName:
