@@ -130,9 +130,14 @@ class BinanceDataDownloader:
         """
         for attempt in range(self.max_retries):
             try:
+            
+                print(f"Fazendo requisição para: {url} com params: {params}")
                 response = requests.get(url, params=params, timeout=30)
+                print(f"Status code: {response.status_code}")
+                print(f"Response text: {response.text[:200]}...")  # Primeiros 200 caracteres
+            
                 response.raise_for_status()
-                
+              
                 data = response.json()
                 logger.debug(f"Requisição bem-sucedida: {len(data)} registros")
                 return data
