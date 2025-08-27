@@ -81,8 +81,8 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
       VpcConfig:
-      SecurityGroupIds:
-        - !Ref LambdaSecurityGroupId
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
       SubnetIds:
         - !Ref PrivateSubnet1Id
         - !Ref PrivateSubnet2Id
