@@ -52,13 +52,12 @@ class BinanceDataDownloader:
         self.config = self._load_configuration()
         
         # URLs da API da Binance
-        #self.base_url = "https://api.binance.com"
         self.base_url = "https://data.binance.com"
         self.klines_endpoint = "/api/v3/klines"
         
         # Configurações de retry
         self.max_retries = 3
-        self.retry_delay = 1  # segundos
+        self.retry_delay = 5  # segundos
         
         logger.info("BinanceDataDownloader inicializado com sucesso")
     
