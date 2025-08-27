@@ -14,6 +14,14 @@ Parameters:
     Description: 'Name of the S3 bucket for data storage'
   ArtifactsBucket:  # Novo parâmetro
     Type: String
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+  LambdaSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
 
 Mappings:
   LayerArnMap:
@@ -72,6 +80,12 @@ Resources:
       Tags:
         - Key: Project
           Value: !Ref ProjectName
+      VpcConfig:
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroupId
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
     DependsOn:
       - DataDownloaderLogGroup
 
