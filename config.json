@@ -4,19 +4,11 @@
   "aws_region": "us-east-1",
   "trading_config": {
     "symbols": [
-      "BTCUSDT",
-      "ETHUSDT", 
-      "ADAUSDT",
-      "DOTUSDT",
-      "LINKUSDT",
-      "BNBUSDT",
-      "SOLUSDT",
-      "MATICUSDT"
+      "BTCUSDT"
     ],
     "timeframes": [
       "1h",
-      "4h", 
-      "1d"
+      "4h"
     ],
     "lookback_days": 365,
     "data_collection_schedule": "cron(0 0 * * ? *)"
