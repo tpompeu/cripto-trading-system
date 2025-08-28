@@ -9,7 +9,10 @@ Parameters:
 
 Resources:
 
-  # Role para as Funções Lambda (Exemplo genérico, será refinado nas próximas fases)
+  # =====================================================
+  # ROLE PARA FUNÇÕES LAMBDA
+  # =====================================================
+  
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -24,7 +27,7 @@ Resources:
           - Effect: Allow
             Principal:
               Service: scheduler.amazonaws.com
-            Action: sts:AssumeRole            
+            Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
@@ -33,13 +36,18 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              # Permissões S3
               - Effect: Allow
                 Action:
                   - 's3:GetObject'
                   - 's3:PutObject'
                   - 's3:ListBucket'
-                  - 's3:DeleteObject'  # Necessário para operações de overwrite
-                Resource: '*' # Será restringido ao bucket do projeto
+                  - 's3:DeleteObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:ListObjectVersions'
+                Resource: '*'
+              
+              # Permissões DynamoDB
               - Effect: Allow
                 Action:
                   - 'dynamodb:Query'
@@ -47,14 +55,178 @@ Resources:
                   - 'dynamodb:GetItem'
                   - 'dynamodb:PutItem'
                   - 'dynamodb:UpdateItem'
-                Resource: '*' # Será restringido à tabela do projeto
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:BatchWriteItem'
+                Resource: '*'
+              
+              # Permissões Systems Manager (Parameter Store)
               - Effect: Allow
                 Action:
                   - 'ssm:GetParameter'
                   - 'ssm:GetParameters'
-                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/trading_system/*'
+                  - 'ssm:GetParametersByPath'
+                  - 'ssm:PutParameter'
+                  - 'ssm:DeleteParameter'
+                Resource: '*'
+              
+              # Permissões SQS
+              - Effect: Allow
+                Action:
+                  - 'sqs:SendMessage'
+                  - 'sqs:ReceiveMessage'
+                  - 'sqs:DeleteMessage'
+                  - 'sqs:GetQueueAttributes'
+                  - 'sqs:GetQueueUrl'
+                Resource: '*'
+              
+              # Permissões EC2 para instâncias Spot
+              - Effect: Allow
+                Action:
+                  - 'ec2:RunInstances'
+                  - 'ec2:TerminateInstances'
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeInstanceStatus'
+                  - 'ec2:DescribeSpotInstanceRequests'
+                  - 'ec2:RequestSpotInstances'
+                  - 'ec2:CancelSpotInstanceRequests'
+                  - 'ec2:DescribeImages'
+                  - 'ec2:DescribeKeyPairs'
+                  - 'ec2:DescribeSecurityGroups'
+                  - 'ec2:DescribeSubnets'
+                  - 'ec2:DescribeVpcs'
+                  - 'ec2:CreateTags'
+                  - 'ec2:DescribeTags'
+                Resource: '*'
+              
+              # Permissões IAM para passar roles
+              - Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${ProjectName}-*'
+              
+              # Permissões Lambda para invocar outras funções
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                  - 'lambda:InvokeAsync'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-*'
+              
+              # Permissões CloudWatch
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogGroups'
+                  - 'logs:DescribeLogStreams'
+                Resource: '*'
+              
+              # Permissões EventBridge
+              - Effect: Allow
+                Action:
+                  - 'events:PutEvents'
+                  - 'events:DescribeRule'
+                  - 'events:EnableRule'
+                  - 'events:DisableRule'
+                Resource: '*'
+
+  # =====================================================
+  # ROLE PARA INSTÂNCIAS EC2 SPOT
+  # =====================================================
+  
+  SpotInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-SpotInstanceRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-SpotInstancePolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Permissões S3 para dados e modelos
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                  - 's3:DeleteObject'
+                  - 's3:GetObjectVersion'
+                Resource: '*'
+              
+              # Permissões DynamoDB para estado das estratégias
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:BatchWriteItem'
+                Resource: '*'
+              
+              # Permissões Systems Manager
+              - Effect: Allow
+                Action:
+                  - 'ssm:GetParameter'
+                  - 'ssm:GetParameters'
+                  - 'ssm:GetParametersByPath'
+                  - 'ssm:SendCommand'
+                  - 'ssm:GetCommandInvocation'
+                Resource: '*'
+              
+              # Permissões SQS para comunicação
+              - Effect: Allow
+                Action:
+                  - 'sqs:SendMessage'
+                  - 'sqs:ReceiveMessage'
+                  - 'sqs:DeleteMessage'
+                  - 'sqs:GetQueueAttributes'
+                Resource: '*'
+              
+              # Permissões CloudWatch para logs e métricas
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogGroups'
+                  - 'logs:DescribeLogStreams'
+                  - 'cloudwatch:PutMetricData'
+                  - 'cloudwatch:GetMetricStatistics'
+                  - 'cloudwatch:ListMetrics'
+                Resource: '*'
+              
+              # Permissões EC2 para auto-terminação
+              - Effect: Allow
+                Action:
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:TerminateInstances'
+                  - 'ec2:CreateTags'
+                Resource: '*'
+              
+              # Permissões Lambda para notificações
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-*'
 
 Outputs:
   LambdaExecutionRoleArn:
     Description: 'ARN of the Lambda Execution Role'
     Value: !GetAtt LambdaExecutionRole.Arn
+  SpotInstanceRoleArn:
+    Description: 'ARN of the Spot instance role'
+    Value: !GetAtt SpotInstanceRole.Arn
+    Export:
+      Name: !Sub '${ProjectName}-SpotInstanceRoleArn'
