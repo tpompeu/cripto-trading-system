@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Processing resources (Lambda, SQS, EventBridge) for the Crypto Trading System. StackName: crypto-trading-processing'
+Description: 'Processing resources (Lambda, SQS, EventBridge, EC2 Spot) for the Crypto Trading System. StackName: crypto-trading-processing'
 
 Parameters:
   ProjectName:
@@ -9,19 +9,30 @@ Parameters:
   LambdaExecutionRoleArn:
     Type: String
     Description: 'ARN of the IAM Role for Lambda functions'
+  SpotInstanceRoleArn:
+    Type: String
+    Description: 'ARN of the IAM Role for EC2 Spot instances'
   DataBucketName:
     Type: String
     Description: 'Name of the S3 bucket for data storage'
-  ArtifactsBucket:  # Novo parâmetro
+  ArtifactsBucket:
     Type: String
+    Description: 'S3 bucket containing Lambda code artifacts'
   VpcId:
     Type: AWS::EC2::VPC::Id
+    Description: 'VPC ID for Lambda functions'
   PrivateSubnet1Id:
     Type: AWS::EC2::Subnet::Id
+    Description: 'Private subnet 1 ID'
   PrivateSubnet2Id:
     Type: AWS::EC2::Subnet::Id
+    Description: 'Private subnet 2 ID'
   LambdaSecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
+    Description: 'Security group for Lambda functions'
+  SpotInstanceSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: 'Security group for EC2 Spot instances'
 
 Mappings:
   LayerArnMap:
@@ -37,19 +48,29 @@ Mappings:
       LayerArn: arn:aws:lambda:sa-east-1:336392948345:layer:AWSSDKPandas-Python311:10
     ap-southeast-1:
       LayerArn: arn:aws:lambda:ap-southeast-1:336392948345:layer:AWSSDKPandas-Python311:10
-    # Adicione outras regiões conforme necessário
 
 Resources:
-  # Fila SQS para jobs de validação
+  # =====================================================
+  # FILAS SQS
+  # =====================================================
+  
+  # Fila SQS para jobs de validação (FIFO para ordem)
   ValidationQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${ProjectName}-ValidationQueue'
+      QueueName: !Sub '${ProjectName}-ValidationQueue.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      VisibilityTimeout: 900  # 15 minutos
+      MessageRetentionPeriod: 1209600  # 14 dias
       Tags:
         - Key: Project
           Value: !Ref ProjectName
 
-  # CloudWatch Log Group para a função Lambda
+  # =====================================================
+  # CLOUDWATCH LOG GROUPS
+  # =====================================================
+  
   DataDownloaderLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -58,6 +79,55 @@ Resources:
       Tags:
         - Key: Project
           Value: !Ref ProjectName
+
+  OrchestratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-Orchestrator'
+      RetentionInDays: 30
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  LaunchSpotValidatorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-LaunchSpotValidator'
+      RetentionInDays: 30
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  InitiateValidationWindowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-InitiateValidationWindow'
+      RetentionInDays: 30
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ModelRetrainerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-ModelRetrainer'
+      RetentionInDays: 30
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ConfigServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-ConfigService'
+      RetentionInDays: 30
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # =====================================================
+  # FUNÇÕES LAMBDA
+  # =====================================================
 
   # Função Lambda para download de dados
   DataDownloaderFunction:
@@ -69,6 +139,7 @@ Resources:
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 900  # 15 minutos
       MemorySize: 512
+      ReservedConcurrencyLimit: 1
       Layers:
         - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
       Environment:
@@ -77,8 +148,8 @@ Resources:
           PROJECT_NAME: !Ref ProjectName
           LOG_LEVEL: INFO
       Code:
-        S3Bucket: !Sub '${ArtifactsBucket}'  # Bucket de artefatos do pipeline
-        S3Key: lambda-code/data_downloader.zip  # Caminho do código compilado
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: lambda-code/data_downloader.zip
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -91,16 +162,203 @@ Resources:
     DependsOn:
       - DataDownloaderLogGroup
 
-  # Permissão para o EventBridge Scheduler invocar a Lambda
-  DataDownloaderSchedulePermission:
+  # Função Lambda orquestradora
+  OrchestratorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-Orchestrator'
+      Runtime: python3.11
+      Handler: orchestrator.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 900  # 15 minutos
+      MemorySize: 512
+      Layers:
+        - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
+      Environment:
+        Variables:
+          DATA_BUCKET: !Ref DataBucketName
+          PROJECT_NAME: !Ref ProjectName
+          VALIDATION_QUEUE_URL: !Ref ValidationQueue
+          LOG_LEVEL: INFO
+      Code:
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: lambda-code/orchestrator.zip
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+    DependsOn:
+      - OrchestratorLogGroup
+
+  # Função Lambda para lançar instâncias Spot
+  LaunchSpotValidatorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-LaunchSpotValidator'
+      Runtime: python3.11
+      Handler: launch_spot_validator.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 300  # 5 minutos
+      MemorySize: 256
+      Layers:
+        - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
+      Environment:
+        Variables:
+          DATA_BUCKET: !Ref DataBucketName
+          PROJECT_NAME: !Ref ProjectName
+          VALIDATION_QUEUE_URL: !Ref ValidationQueue
+          VPC_ID: !Ref VpcId
+          SUBNET_ID: !Ref PrivateSubnet1Id
+          SECURITY_GROUP_ID: !Ref SpotInstanceSecurityGroupId
+          LOG_LEVEL: INFO
+      Code:
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: lambda-code/launch_spot_validator.zip
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+    DependsOn:
+      - LaunchSpotValidatorLogGroup
+
+  # Função Lambda para iniciar janela de validação
+  InitiateValidationWindowFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-InitiateValidationWindow'
+      Runtime: python3.11
+      Handler: initiate_validation_window.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 300  # 5 minutos
+      MemorySize: 256
+      Layers:
+        - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
+      Environment:
+        Variables:
+          PROJECT_NAME: !Ref ProjectName
+          VALIDATION_QUEUE_URL: !Ref ValidationQueue
+          SPOT_LAUNCHER_FUNCTION: !Ref LaunchSpotValidatorFunction
+          LOG_LEVEL: INFO
+      Code:
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: lambda-code/initiate_validation_window.zip
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+    DependsOn:
+      - InitiateValidationWindowLogGroup
+
+  # Função Lambda para retreino de modelos
+  ModelRetrainerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-ModelRetrainer'
+      Runtime: python3.11
+      Handler: model_retrainer.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 900  # 15 minutos
+      MemorySize: 1024
+      Layers:
+        - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
+      Environment:
+        Variables:
+          DATA_BUCKET: !Ref DataBucketName
+          PROJECT_NAME: !Ref ProjectName
+          LOG_LEVEL: INFO
+      Code:
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: lambda-code/model_retrainer.zip
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+    DependsOn:
+      - ModelRetrainerLogGroup
+
+  # Função Lambda para serviço de configuração
+  ConfigServiceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-ConfigService'
+      Runtime: python3.11
+      Handler: config_service.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 300  # 5 minutos
+      MemorySize: 256
+      Layers:
+        - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
+      Environment:
+        Variables:
+          DATA_BUCKET: !Ref DataBucketName
+          PROJECT_NAME: !Ref ProjectName
+          LOG_LEVEL: INFO
+      Code:
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: lambda-code/config_service.zip
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroupId
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+    DependsOn:
+      - ConfigServiceLogGroup
+
+  # =====================================================
+  # PERMISSÕES LAMBDA
+  # =====================================================
+
+  # Permissão para SQS invocar LaunchSpotValidator
+  LaunchSpotValidatorSQSPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref DataDownloaderFunction
+      FunctionName: !Ref LaunchSpotValidatorFunction
       Action: lambda:InvokeFunction
-      Principal: scheduler.amazonaws.com
-      SourceArn: !GetAtt DataDownloaderSchedule.Arn
+      Principal: sqs.amazonaws.com
+      SourceArn: !GetAtt ValidationQueue.Arn
 
-  # Agendador de Eventos (EventBridge Scheduler) para o data_downloader
+  # =====================================================
+  # EVENT SOURCE MAPPINGS
+  # =====================================================
+
+  # Mapeamento SQS -> LaunchSpotValidator
+  ValidationQueueEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt ValidationQueue.Arn
+      FunctionName: !Ref LaunchSpotValidatorFunction
+      BatchSize: 1
+      MaximumBatchingWindowInSeconds: 0
+
+  # =====================================================
+  # EVENTBRIDGE SCHEDULES
+  # =====================================================
+
+  # Agendador para data downloader (diário às 00:00 UTC)
   DataDownloaderSchedule:
     Type: AWS::Scheduler::Schedule
     Properties:
@@ -116,12 +374,113 @@ Resources:
         RoleArn: !Ref LambdaExecutionRoleArn
         RetryPolicy:
           MaximumRetryAttempts: 2
-        DeadLetterConfig:
-          Arn: !GetAtt ValidationQueue.Arn
-    DependsOn:
-      - DataDownloaderFunction
 
-  # Alias para a função Lambda (facilita atualizações)
+  # Agendador para orquestrador (diário às 01:00 UTC)
+  OrchestratorSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub '${ProjectName}-DailyOrchestration'
+      Description: 'Triggers the orchestrator Lambda daily at 01:00 UTC'
+      ScheduleExpression: 'cron(0 1 * * ? *)'
+      ScheduleExpressionTimezone: 'UTC'
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      State: 'ENABLED'
+      Target:
+        Arn: !GetAtt OrchestratorFunction.Arn
+        RoleArn: !Ref LambdaExecutionRoleArn
+        RetryPolicy:
+          MaximumRetryAttempts: 2
+
+  # Agendador para iniciador de janela de validação (a cada 30 minutos)
+  ValidationWindowSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub '${ProjectName}-ValidationWindowCheck'
+      Description: 'Checks for validation opportunities every 30 minutes'
+      ScheduleExpression: 'cron(*/30 * * * ? *)'
+      ScheduleExpressionTimezone: 'UTC'
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      State: 'ENABLED'
+      Target:
+        Arn: !GetAtt InitiateValidationWindowFunction.Arn
+        RoleArn: !Ref LambdaExecutionRoleArn
+        RetryPolicy:
+          MaximumRetryAttempts: 1
+
+  # =====================================================
+  # PERMISSÕES EVENTBRIDGE
+  # =====================================================
+
+  DataDownloaderSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DataDownloaderFunction
+      Action: lambda:InvokeFunction
+      Principal: scheduler.amazonaws.com
+      SourceArn: !GetAtt DataDownloaderSchedule.Arn
+
+  OrchestratorSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref OrchestratorFunction
+      Action: lambda:InvokeFunction
+      Principal: scheduler.amazonaws.com
+      SourceArn: !GetAtt OrchestratorSchedule.Arn
+
+  ValidationWindowSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InitiateValidationWindowFunction
+      Action: lambda:InvokeFunction
+      Principal: scheduler.amazonaws.com
+      SourceArn: !GetAtt ValidationWindowSchedule.Arn
+
+  # =====================================================
+  # EC2 SPOT INSTANCE RESOURCES
+  # =====================================================
+
+  # Launch Template para instâncias Spot
+  SpotInstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${ProjectName}-SpotValidatorTemplate'
+      LaunchTemplateData:
+        ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 (us-east-1)
+        InstanceType: c6i.large  # Será sobrescrito dinamicamente
+        KeyName: !Sub '${ProjectName}-KeyPair'  # Assumindo que existe
+        SecurityGroupIds:
+          - !Ref SpotInstanceSecurityGroupId
+        IamInstanceProfile:
+          Name: !Ref SpotInstanceProfile
+        UserData: !Base64
+          Fn::Sub: |
+            #!/bin/bash
+            # User data será injetado dinamicamente pela Lambda
+            echo "Spot instance launch template"
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub '${ProjectName}-SpotValidator'
+              - Key: Project
+                Value: !Ref ProjectName
+              - Key: Purpose
+                Value: ModelValidation
+
+  # Instance Profile para instâncias Spot
+  SpotInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub '${ProjectName}-SpotInstanceProfile'
+      Roles:
+        - !Ref SpotInstanceRoleArn
+
+  # =====================================================
+  # ALIASES LAMBDA
+  # =====================================================
+
   DataDownloaderAlias:
     Type: AWS::Lambda::Alias
     Properties:
@@ -130,19 +489,87 @@ Resources:
       Name: LIVE
       Description: 'Alias para a versão em produção do data downloader'
 
+  OrchestratorAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref OrchestratorFunction
+      FunctionVersion: $LATEST
+      Name: LIVE
+      Description: 'Alias para a versão em produção do orquestrador'
+
 Outputs:
+  # SQS Outputs
   ValidationQueueUrl:
     Description: 'URL of the SQS validation queue'
     Value: !Ref ValidationQueue
+    Export:
+      Name: !Sub '${ProjectName}-ValidationQueueUrl'
+
   ValidationQueueArn:
     Description: 'ARN of the SQS validation queue'
     Value: !GetAtt ValidationQueue.Arn
+    Export:
+      Name: !Sub '${ProjectName}-ValidationQueueArn'
+
+  # Lambda Function Outputs
   DataDownloaderFunctionArn:
     Description: 'ARN of the data downloader Lambda function'
     Value: !GetAtt DataDownloaderFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-DataDownloaderFunctionArn'
+
   DataDownloaderFunctionName:
     Description: 'Name of the data downloader Lambda function'
     Value: !Ref DataDownloaderFunction
+    Export:
+      Name: !Sub '${ProjectName}-DataDownloaderFunctionName'
+
+  OrchestratorFunctionArn:
+    Description: 'ARN of the orchestrator Lambda function'
+    Value: !GetAtt OrchestratorFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-OrchestratorFunctionArn'
+
+  LaunchSpotValidatorFunctionArn:
+    Description: 'ARN of the launch spot validator Lambda function'
+    Value: !GetAtt LaunchSpotValidatorFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-LaunchSpotValidatorFunctionArn'
+
+  ModelRetrainerFunctionArn:
+    Description: 'ARN of the model retrainer Lambda function'
+    Value: !GetAtt ModelRetrainerFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-ModelRetrainerFunctionArn'
+
+  ConfigServiceFunctionArn:
+    Description: 'ARN of the config service Lambda function'
+    Value: !GetAtt ConfigServiceFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-ConfigServiceFunctionArn'
+
+  # Schedule Outputs
   DataDownloaderScheduleArn:
-    Description: 'ARN of the EventBridge schedule'
+    Description: 'ARN of the data downloader EventBridge schedule'
     Value: !GetAtt DataDownloaderSchedule.Arn
+    Export:
+      Name: !Sub '${ProjectName}-DataDownloaderScheduleArn'
+
+  OrchestratorScheduleArn:
+    Description: 'ARN of the orchestrator EventBridge schedule'
+    Value: !GetAtt OrchestratorSchedule.Arn
+    Export:
+      Name: !Sub '${ProjectName}-OrchestratorScheduleArn'
+
+  # EC2 Outputs
+  SpotInstanceLaunchTemplateId:
+    Description: 'ID of the Spot instance launch template'
+    Value: !Ref SpotInstanceLaunchTemplate
+    Export:
+      Name: !Sub '${ProjectName}-SpotInstanceLaunchTemplateId'
+
+  SpotInstanceProfileArn:
+    Description: 'ARN of the Spot instance profile'
+    Value: !GetAtt SpotInstanceProfile.Arn
+    Export:
+      Name: !Sub '${ProjectName}-SpotInstanceProfileArn'
