@@ -139,7 +139,6 @@ Resources:
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 900  # 15 minutos
       MemorySize: 512
-      ReservedConcurrencyLimit: 1
       Layers:
         - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
       Environment:
