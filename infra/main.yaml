@@ -50,6 +50,8 @@ Resources:
         PrivateSubnet1Id: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
         PrivateSubnet2Id: !GetAtt NetworkStack.Outputs.PrivateSubnet2Id
         LambdaSecurityGroupId: !GetAtt NetworkStack.Outputs.LambdaSecurityGroupId
+        SpotInstanceRoleArn: !GetAtt IAMStack.Outputs.SpotInstanceRoleArn
+        SpotInstanceSecurityGroupId: !GetAtt NetworkStack.Outputs.SpotInstanceSecurityGroupId
     DependsOn:
       - IAMStack
       - StorageStack
