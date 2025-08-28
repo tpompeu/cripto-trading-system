@@ -7,29 +7,68 @@ phases:
     commands:
       - echo "Installing dependencies..."
       - pip install --upgrade pip
-      - pip install requests
-  
+      - pip install -r requirements.txt
+
   pre_build:
     commands:
-      - echo "Preparing Lambda deployment package..."
-      - mkdir -p lambda_package
-      - cp src/data_downloader.py lambda_package/
-      - cd lambda_package
-      - pip install --target . requests 
-      - zip -r ../data_downloader.zip .
-      - cd ..
-      - echo "Lambda package created - data_downloader.zip"
-  
+      - echo "Pre-build phase started on `date`"
+      - echo "Validating CloudFormation templates..."
+      - aws cloudformation validate-template --template-body file://infra/main.yaml
+      - aws cloudformation validate-template --template-body file://infra/iam.yaml
+      - aws cloudformation validate-template --template-body file://infra/storage.yaml
+      - aws cloudformation validate-template --template-body file://infra/network.yaml
+      - aws cloudformation validate-template --template-body file://infra/processing.yaml
+
   build:
     commands:
+      - echo "Build phase started on `date`"
+      
+      # Criar diretório para códigos Lambda
+      - mkdir -p lambda-code
+      
+      # Empacotar cada função Lambda individualmente
+      - echo "Packaging data_downloader..."
+      - cd src && zip -r ../lambda-code/data_downloader.zip data_downloader.py config_service.py && cd ..
+      
+      - echo "Packaging orchestrator..."
+      - cd src && zip -r ../lambda-code/orchestrator.zip orchestrator.py config_service.py && cd ..
+      
+      - echo "Packaging launch_spot_validator..."
+      - cd src && zip -r ../lambda-code/launch_spot_validator.zip launch_spot_validator.py config_service.py && cd ..
+      
+      - echo "Packaging initiate_validation_window..."
+      - cd src && zip -r ../lambda-code/initiate_validation_window.zip initiate_validation_window.py config_service.py && cd ..
+      
+      - echo "Packaging model_retrainer..."
+      - cd src && zip -r ../lambda-code/model_retrainer.zip model_retrainer.py config_service.py model_validator.py && cd ..
+      
+      - echo "Packaging config_service..."
+      - cd src && zip -r ../lambda-code/config_service.zip config_service.py && cd ..
+      
+      # Upload dos códigos Lambda para S3
+      - echo "Uploading Lambda code packages to S3..."
+      - aws s3 cp lambda-code/ s3://${ARTIFACTS_BUCKET}/lambda-code/ --recursive
+      
+      # Empacotar user_data.sh para instâncias EC2
+      - echo "Uploading user_data.sh to S3..."
+      - aws s3 cp user_data.sh s3://${ARTIFACTS_BUCKET}/ec2-scripts/user_data.sh
+      
+      # Empacotar templates CloudFormation
       - echo "Packaging CloudFormation templates..."
       - aws cloudformation package --template-file infra/main.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-main.yaml
-      - echo "Uploading Lambda code to S3..."
-      - aws s3 cp data_downloader.zip s3://${ARTIFACTS_BUCKET}/lambda-code/data_downloader.zip
+      - aws cloudformation package --template-file infra/iam.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-iam.yaml
+      - aws cloudformation package --template-file infra/storage.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-storage.yaml
+      - aws cloudformation package --template-file infra/network.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-network.yaml
+      - aws cloudformation package --template-file infra/processing.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-processing.yaml
+
+  post_build:
+    commands:
+      - echo "Post-build phase started on `date`"
       - echo "Build completed successfully"
 
 artifacts:
   files:
-    - packaged-main.yaml
-    - data_downloader.zip
-
+    - packaged-*.yaml
+    - config.json
+    - setup_parameters.py
+  name: CryptoTradingSystemArtifacts
