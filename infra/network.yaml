@@ -151,6 +151,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-Lambda-SG
+  SpotInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for EC2 Spot instances
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-SpotInstance-SG
 
 Outputs:
   VpcId:
@@ -161,3 +169,5 @@ Outputs:
     Value: !Ref PrivateSubnet2
   LambdaSecurityGroupId:
     Value: !Ref LambdaSecurityGroup
+  SpotInstanceSecurityGroupId:
+    Value: !Ref SpotInstanceSecurityGroup
