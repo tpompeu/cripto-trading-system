@@ -474,7 +474,7 @@ Resources:
     Properties:
       InstanceProfileName: !Sub '${ProjectName}-SpotInstanceProfile'
       Roles:
-        - !Ref SpotInstanceRoleArn
+        - !Select [1, !Split ['/', !Ref SpotInstanceRoleArn]]  # Extrai o nome da role do ARN
 
   # =====================================================
   # ALIASES LAMBDA
