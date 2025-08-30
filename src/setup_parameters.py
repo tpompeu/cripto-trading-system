@@ -6,7 +6,7 @@ Este script lê o arquivo config.json e cria/atualiza os parâmetros necessário
 no Parameter Store para o sistema de trading funcionar corretamente.
 
 Uso:
-    python3 setup_parameters.py [--dry-run] [--region us-east-1] [--profile PROFILE]
+    python3 setup_parameters.py [--dry-run] [--region ap-southeast-1] [--profile PROFILE]
 """
 
 import argparse
@@ -21,7 +21,7 @@ from botocore.exceptions import ClientError
 class ParameterStoreManager:
     """Gerencia parâmetros no AWS Systems Manager Parameter Store."""
     
-    def __init__(self, region: str = 'us-east-1', dry_run: bool = False, profile: str = None):
+    def __init__(self, region: str = 'ap-southeast-1', dry_run: bool = False, profile: str = None):
         """
         Inicializa o gerenciador de parâmetros.
         
@@ -305,7 +305,7 @@ class ParameterStoreManager:
                 if param not in existing_params:
                     param_name = param.split('/')[-1].upper()
                     profile_flag = f" --profile {self.profile}" if self.profile else ""
-                    region_flag = f" --region {self.region}" if self.region != 'us-east-1' else ""
+                    region_flag = f" --region {self.region}" if self.region != 'ap-southeast-1' else ""
                     
                     print(f"aws ssm put-parameter{profile_flag}{region_flag} \\")
                     print(f"  --name '{param}' \\")
@@ -366,8 +366,8 @@ def main():
     )
     parser.add_argument(
         '--region',
-        default='us-east-1',
-        help='Região AWS (padrão: us-east-1)'
+        default='ap-southeast-1',
+        help='Região AWS (padrão: ap-southeast-1)'
     )
     parser.add_argument(
         '--profile',

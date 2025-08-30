@@ -430,7 +430,7 @@ def lambda_handler(event, context):
 if __name__ == "__main__":
     # Configura variáveis de ambiente para teste local
     os.environ['PROJECT_NAME'] = 'CryptoTradingSystem'
-    os.environ['VALIDATION_QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
+    os.environ['VALIDATION_QUEUE_URL'] = 'https://sqs.ap-southeast-1.amazonaws.com/123456789012/test-queue'
     os.environ['SPOT_LAUNCHER_FUNCTION'] = 'CryptoTradingSystem-LaunchSpotValidator'
     
     # Executa o iniciador

@@ -446,7 +446,7 @@ Resources:
     Properties:
       LaunchTemplateName: !Sub '${ProjectName}-SpotValidatorTemplate'
       LaunchTemplateData:
-        ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 (us-east-1)
+        ImageId: ami-0ee07f04ff2b54927  # Amazon Linux 2 (ap-southeast-1)
         InstanceType: c6i.large  # Será sobrescrito dinamicamente
         KeyName: !Sub '${ProjectName}-KeyPair'  # Assumindo que existe
         SecurityGroupIds:

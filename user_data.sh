@@ -28,7 +28,7 @@ handle_error() {
             --topic-arn "$SNS_TOPIC_ARN" \
             --message "Falha na inicialização da instância Spot: $1" \
             --subject "Erro - Instância Spot" \
-            --region us-east-1 || true
+            --region ap-southeast-1 || true
     fi
     
     log "Terminando instância devido ao erro..."
@@ -145,8 +145,8 @@ TIMEFRAME=${TIMEFRAME:-}
 JOB_TYPE=${JOB_TYPE:-walk_forward_validation}
 
 # Configurações AWS
-AWS_DEFAULT_REGION=us-east-1
-AWS_REGION=us-east-1
+AWS_DEFAULT_REGION=uap-southeast-1
+AWS_REGION=ap-southeast-1
 
 # Configurações de logging
 LOG_LEVEL=INFO
@@ -283,7 +283,7 @@ if [ ! -z "$SNS_TOPIC_ARN" ]; then
         --topic-arn "$SNS_TOPIC_ARN" \
         --message "Instância Spot inicializada com sucesso. Strategy: $STRATEGY_ID, Job: $JOB_TYPE" \
         --subject "Sucesso - Instância Spot Iniciada" \
-        --region us-east-1 || true
+        --region ap-southeast-1 || true
 fi
 
 log "Script user-data finalizado com sucesso"
