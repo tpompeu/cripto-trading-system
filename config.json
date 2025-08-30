@@ -1,16 +1,15 @@
 {
   "project_name": "CryptoTradingSystem",
   "version": "2.01",
-  "aws_region": "us-east-1",
+  "aws_region": "ap-southeast-1",
   "trading_config": {
     "symbols": [
       "BTCUSDT"
     ],
     "timeframes": [
-      "1h",
-      "4h"
+      "1h"
     ],
-    "lookback_days": 365,
+    "lookback_days": 1825,
     "data_collection_schedule": "cron(0 0 * * ? *)"
   },
   
@@ -18,7 +17,7 @@
     "data_bucket_prefix": "crypto-trading-data",
     "lambda_timeout": 900,
     "lambda_memory": 512,
-    "lambda_runtime": "python3.11"
+    "lambda_runtime": "python3.13"
   },
   
   "binance_api": {

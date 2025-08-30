@@ -380,7 +380,7 @@ shutdown -h +5
             
             # Configuração da instância
             launch_spec = {
-                'ImageId': 'ami-0c02fb55956c7d316',  # Amazon Linux 2 (us-east-1)
+                'ImageId': 'ami-0ee07f04ff2b54927',  # Amazon Linux 2 (ap-southeast-1)
                 'InstanceType': instance_type,
                 'KeyName': self.config.get('key_pair_name', ''),
                 'SecurityGroupIds': [self.config['security_group_id']],
@@ -578,7 +578,7 @@ if __name__ == "__main__":
     # Configura variáveis de ambiente para teste local
     os.environ['PROJECT_NAME'] = 'CryptoTradingSystem'
     os.environ['DATA_BUCKET'] = 'crypto-trading-data-test'
-    os.environ['VALIDATION_QUEUE_URL'] = 'https://sqs.us-east-1.amazonaws.com/123456789012/test-queue'
+    os.environ['VALIDATION_QUEUE_URL'] = 'https://sqs.ap-southeast-1.amazonaws.com/123456789012/test-queue'
     
     # Simula evento SQS
     test_event = {

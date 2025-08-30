@@ -13,7 +13,7 @@ Sistema automatizado de trading algorítmico para criptomoedas com validação r
 
 ## Arquitetura
 
-O sistema é implantado na AWS us-east-1 e utiliza os seguintes serviços:
+O sistema é implantado na AWS ap-southeast-1 e utiliza os seguintes serviços:
 
 - **Computação**: AWS Lambda, EC2 Spot Instances
 - **Armazenamento**: S3, DynamoDB
