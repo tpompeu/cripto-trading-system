@@ -14,7 +14,7 @@
   },
   
   "aws_resources": {
-    "data_bucket_prefix": "crypto-trading-data",
+    "data_bucket_prefix": "crypto-trading-system-data",
     "lambda_timeout": 900,
     "lambda_memory": 512,
     "lambda_runtime": "python3.13"

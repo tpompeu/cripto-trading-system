@@ -294,7 +294,17 @@ Resources:
                 Action:
                   - 'iam:PassRole'
                 Resource: '*'
-
+            # NOVAS PERMISSÕES: CodeStar Connections
+              - Effect: Allow
+                Action:
+                  - 'codestar-connections:UseConnection'
+                Resource: !Sub 'arn:aws:codestar-connections:${AWS::Region}:${AWS::AccountId}:connection/*'
+              - Effect: Allow
+                Action:
+                  - 'codestar-connections:GetConnection'
+                  - 'codestar-connections:ListConnections'
+                  - 'codestar-connections:PassConnection'
+                Resource: '*'
   # Projeto do CodeBuild
   CodeBuildProject:
     Type: AWS::CodeBuild::Project

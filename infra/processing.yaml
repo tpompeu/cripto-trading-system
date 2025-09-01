@@ -170,7 +170,7 @@ Resources:
       Handler: orchestrator.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 900  # 15 minutos
-      MemorySize: 512
+      MemorySize: 1024  # Aumentado para processamento de dados
       Layers:
         - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
       Environment:
@@ -272,7 +272,7 @@ Resources:
       Handler: model_retrainer.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
       Timeout: 900  # 15 minutos
-      MemorySize: 1024
+      MemorySize: 2048  # Aumentado para processamento intensivo
       Layers:
         - !FindInMap [LayerArnMap, !Ref "AWS::Region", LayerArn]
       Environment:
@@ -529,11 +529,23 @@ Outputs:
     Export:
       Name: !Sub '${ProjectName}-OrchestratorFunctionArn'
 
+  OrchestratorFunctionName:
+    Description: 'Name of the orchestrator Lambda function'
+    Value: !Ref OrchestratorFunction
+    Export:
+      Name: !Sub '${ProjectName}-OrchestratorFunctionName'
+
   LaunchSpotValidatorFunctionArn:
     Description: 'ARN of the launch spot validator Lambda function'
     Value: !GetAtt LaunchSpotValidatorFunction.Arn
     Export:
       Name: !Sub '${ProjectName}-LaunchSpotValidatorFunctionArn'
+
+  InitiateValidationWindowFunctionArn:
+    Description: 'ARN of the initiate validation window Lambda function'
+    Value: !GetAtt InitiateValidationWindowFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-InitiateValidationWindowFunctionArn'
 
   ModelRetrainerFunctionArn:
     Description: 'ARN of the model retrainer Lambda function'
@@ -547,28 +559,35 @@ Outputs:
     Export:
       Name: !Sub '${ProjectName}-ConfigServiceFunctionArn'
 
-  # Schedule Outputs
+  # EventBridge Schedules
   DataDownloaderScheduleArn:
-    Description: 'ARN of the data downloader EventBridge schedule'
+    Description: 'ARN of the data downloader schedule'
     Value: !GetAtt DataDownloaderSchedule.Arn
     Export:
       Name: !Sub '${ProjectName}-DataDownloaderScheduleArn'
 
   OrchestratorScheduleArn:
-    Description: 'ARN of the orchestrator EventBridge schedule'
+    Description: 'ARN of the orchestrator schedule'
     Value: !GetAtt OrchestratorSchedule.Arn
     Export:
       Name: !Sub '${ProjectName}-OrchestratorScheduleArn'
 
-  # EC2 Outputs
+  ValidationWindowScheduleArn:
+    Description: 'ARN of the validation window schedule'
+    Value: !GetAtt ValidationWindowSchedule.Arn
+    Export:
+      Name: !Sub '${ProjectName}-ValidationWindowScheduleArn'
+
+  # EC2 Resources
   SpotInstanceLaunchTemplateId:
-    Description: 'ID of the Spot instance launch template'
+    Description: 'ID of the spot instance launch template'
     Value: !Ref SpotInstanceLaunchTemplate
     Export:
       Name: !Sub '${ProjectName}-SpotInstanceLaunchTemplateId'
 
   SpotInstanceProfileArn:
-    Description: 'ARN of the Spot instance profile'
+    Description: 'ARN of the spot instance profile'
     Value: !GetAtt SpotInstanceProfile.Arn
     Export:
       Name: !Sub '${ProjectName}-SpotInstanceProfileArn'
+[file content end]

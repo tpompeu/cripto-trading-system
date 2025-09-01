@@ -1,3 +1,5 @@
+[file name]: buildspec.yml
+[file content begin]
 version: 0.2
 
 phases:
@@ -26,7 +28,7 @@ phases:
       # Criar diretório para códigos Lambda
       - mkdir -p lambda-code
       
-      # Empacotar cada função Lambda individualmente
+      # Empacotar cada função Lambda individualmente com todas as dependências necessárias
       - echo "Packaging data_downloader..."
       - cd src && zip -r ../lambda-code/data_downloader.zip data_downloader.py config_service.py && cd ..
       
@@ -44,6 +46,11 @@ phases:
       
       - echo "Packaging config_service..."
       - cd src && zip -r ../lambda-code/config_service.zip config_service.py && cd ..
+      
+      # Adicionar módulos de processamento às lambdas que precisam deles
+      - echo "Adding processing modules to required lambdas..."
+      - cd src && zip -r ../lambda-code/model_retrainer.zip data_processor.py data_validator.py feature_engineering.py model_trainer.py monte_carlo_validator.py performance_monitor.py risk_monitor.py shap_analyzer.py strategy_evaluator.py walk_forward_validator.py && cd ..
+      - cd src && zip -r ../lambda-code/orchestrator.zip data_processor.py data_validator.py feature_engineering.py && cd ..
       
       # Upload dos códigos Lambda para S3
       - echo "Uploading Lambda code packages to S3..."
@@ -72,3 +79,4 @@ artifacts:
     - config.json
     - setup_parameters.py
   name: CryptoTradingSystemArtifacts
+[file content end]

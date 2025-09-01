@@ -174,7 +174,7 @@ class ParameterStoreManager:
                     sts_client = boto3.client('sts', region_name=self.region)
                 
                 account_id = sts_client.get_caller_identity()['Account']
-                data_bucket = f"{config['aws_resources']['data_bucket_prefix']}-{account_id}-{self.region}"
+                data_bucket = f"{config['aws_resources']['data_bucket_prefix']}"
             else:
                 data_bucket = f"{config['aws_resources']['data_bucket_prefix']}-123456789012-{self.region}"
         except Exception as e:

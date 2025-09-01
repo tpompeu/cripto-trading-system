@@ -145,7 +145,7 @@ TIMEFRAME=${TIMEFRAME:-}
 JOB_TYPE=${JOB_TYPE:-walk_forward_validation}
 
 # Configurações AWS
-AWS_DEFAULT_REGION=uap-southeast-1
+AWS_DEFAULT_REGION=ap-southeast-1
 AWS_REGION=ap-southeast-1
 
 # Configurações de logging
