@@ -1,5 +1,3 @@
-[file name]: buildspec.yml
-[file content begin]
 version: 0.2
 
 phases:
