@@ -590,4 +590,3 @@ Outputs:
     Value: !GetAtt SpotInstanceProfile.Arn
     Export:
       Name: !Sub '${ProjectName}-SpotInstanceProfileArn'
-[file content end]
