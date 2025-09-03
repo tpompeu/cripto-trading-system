@@ -174,7 +174,7 @@ class ParameterStoreManager:
                     sts_client = boto3.client('sts', region_name=self.region)
                 
                 account_id = sts_client.get_caller_identity()['Account']
-                data_bucket = f"{config['aws_resources']['data_bucket_prefix']}"
+                data_bucket = f"{config['aws_resources']['data_bucket_prefix']}-{account_id}-{self.region}"
             else:
                 data_bucket = f"{config['aws_resources']['data_bucket_prefix']}-123456789012-{self.region}"
         except Exception as e:
@@ -244,6 +244,43 @@ class ParameterStoreManager:
                 'name': '/trading_system/monitoring/log_retention_days',
                 'value': str(config['monitoring']['cloudwatch_log_retention_days']),
                 'description': 'Dias de retenção de logs no CloudWatch'
+            },
+            
+            # Parâmetros dinâmicos (os que estavam faltando)
+            {
+                'name': '/trading_system/risk/risk_per_trade',
+                'value': str(config.get('dynamic_parameters', {}).get('risk_per_trade', 0.01)),
+                'description': 'Percentual do capital a ser arriscado por operação (1%)'
+            },
+            {
+                'name': '/trading_system/risk/risk_exposition',
+                'value': str(config.get('dynamic_parameters', {}).get('risk_exposition', 0.03)),
+                'description': 'Percentual do capital a ser arriscado para exposição em múltiplas posições (3%)'
+            },
+            {
+                'name': '/trading_system/ops/master_trading_switch',
+                'value': str(config.get('dynamic_parameters', {}).get('master_trading_switch', True)).lower(),
+                'description': 'Interruptor mestre para habilitar/desabilitar o trading'
+            },
+            {
+                'name': '/trading_system/cost/spot_min_discount_perc',
+                'value': str(config.get('dynamic_parameters', {}).get('spot_min_discount_perc', 0.95)),
+                'description': 'Percentual mínimo de desconto na instância Spot'
+            },
+            {
+                'name': '/trading_system/cost/monthly_cost_limit',
+                'value': str(config.get('dynamic_parameters', {}).get('monthly_cost_limit', 10.0)),
+                'description': 'Custo máximo mensal do sistema'
+            },
+            {
+                'name': '/trading_system/cost/spot_instance_types',
+                'value': json.dumps(config.get('dynamic_parameters', {}).get('spot_instance_types', ["c6i.large", "c5.xlarge", "c6a.2xlarge", "m6i.large", "m5.xlarge"])),
+                'description': 'Lista de tipos de instância Spot permitidos'
+            },
+            {
+                'name': '/trading_system/environment/github_repo',
+                'value': config.get('dynamic_parameters', {}).get('github_repo', 'git@github.com:tpompeu/cripto-trading-system.git'),
+                'description': 'Repositório do GitHub do projeto'
             }
         ]
         
@@ -282,7 +319,7 @@ class ParameterStoreManager:
                 print(f"[DRY RUN] Parâmetro seguro deve ser configurado manualmente: {param}")
             return True
         
-        # Verifica se os parâmetros seguros já existem
+        # Verifica se os parâmetros seguros já existen
         existing_params = []
         for param in secure_params:
             try:
@@ -333,12 +370,17 @@ class ParameterStoreManager:
         
         print("\n🔍 Verificando parâmetros criados...")
         
-        # Lista de parâmetros para verificar
+        # Lista de parâmetros para verificar (incluindo os novos)
         params_to_check = [
             '/trading_system/data_bucket',
             '/trading_system/symbols',
             '/trading_system/timeframes',
-            '/trading_system/lookback_days'
+            '/trading_system/lookback_days',
+            '/trading_system/risk/risk_per_trade',
+            '/trading_system/risk/risk_exposition',
+            '/trading_system/ops/master_trading_switch',
+            '/trading_system/cost/spot_min_discount_perc',
+            '/trading_system/cost/monthly_cost_limit'
         ]
         
         all_good = True

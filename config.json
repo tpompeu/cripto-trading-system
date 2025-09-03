@@ -38,6 +38,15 @@
     "log_level": "INFO",
     "enable_detailed_logging": true,
     "cloudwatch_log_retention_days": 30
+  },
+
+  "dynamic_parameters": {
+    "risk_per_trade": 0.01,
+    "risk_exposition": 0.03,
+    "master_trading_switch": true,
+    "spot_min_discount_perc": 0.95,
+    "monthly_cost_limit": 10.0,
+    "spot_instance_types": ["c6i.large", "c5.xlarge", "c6a.2xlarge", "m6i.large", "m5.xlarge"],
+    "github_repo": "git@github.com:tpompeu/cripto-trading-system.git"
   }
 }
-

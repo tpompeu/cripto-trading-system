@@ -69,7 +69,7 @@ class TradingOrchestrator:
     def _load_configuration(self) -> Dict[str, Any]:
         """
         Carrega configurações do AWS Systems Manager Parameter Store.
-        
+    
         Returns:
             Dict: Configurações do sistema
         """
@@ -79,7 +79,7 @@ class TradingOrchestrator:
                 'data_bucket': os.environ.get('DATA_BUCKET', ''),
                 'validation_queue_url': os.environ.get('VALIDATION_QUEUE_URL', ''),
             }
-            
+        
             # Parâmetros do SSM
             ssm_params = [
                 '/trading_system/symbols',
@@ -90,18 +90,33 @@ class TradingOrchestrator:
                 '/trading_system/cost/monthly_cost_limit',
                 '/trading_system/cost/spot_min_discount_perc'
             ]
-            
+        
             for param_name in ssm_params:
                 try:
                     response = self.ssm.get_parameter(Name=param_name)
                     param_key = param_name.split('/')[-1]
+                    param_value = response['Parameter']['Value']
+                
+                    # Converte valores booleanos stringificados para booleanos reais
+                    if isinstance(param_value, str):
+                        if param_value.lower() == 'true':
+                            param_value = True
+                        elif param_value.lower() == 'false':
+                            param_value = False
+                        else:
+                            # Tenta converter para JSON se for uma lista/dicionário
+                            try:
+                                param_value = json.loads(param_value)
+                            except json.JSONDecodeError:
+                                # Tenta converter para float se for numérico
+                                try:
+                                    param_value = float(param_value)
+                                except ValueError:
+                                    # Mantém como string
+                                    pass
+                
+                    config[param_key] = param_value
                     
-                    # Parse JSON se possível
-                    try:
-                        config[param_key] = json.loads(response['Parameter']['Value'])
-                    except json.JSONDecodeError:
-                        config[param_key] = response['Parameter']['Value']
-                        
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'ParameterNotFound':
                         logger.warning(f"Parâmetro {param_name} não encontrado")
@@ -109,20 +124,20 @@ class TradingOrchestrator:
                         defaults = {
                             'symbols': ['BTCUSDT', 'ETHUSDT'],
                             'timeframes': ['1h', '4h'],
-                            'master_trading_switch': 'true',
-                            'risk_per_trade': '0.01',
-                            'risk_exposition': '0.03',
-                            'monthly_cost_limit': '10.0',
-                            'spot_min_discount_perc': '0.95'
+                            'master_trading_switch': True,
+                            'risk_per_trade': 0.01,
+                            'risk_exposition': 0.03,
+                            'monthly_cost_limit': 10.0,
+                            'spot_min_discount_perc': 0.95
                         }
                         param_key = param_name.split('/')[-1]
                         config[param_key] = defaults.get(param_key, '')
                     else:
                         raise
-            
+        
             logger.info(f"Configuração carregada: {list(config.keys())}")
             return config
-            
+        
         except Exception as e:
             logger.error(f"Erro ao carregar configuração: {str(e)}")
             raise
