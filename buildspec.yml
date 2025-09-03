@@ -2,7 +2,6 @@ version: 0.2
 
 env:
   variables:
-    # Gerar um timestamp único para forçar atualizações
     BUILD_TIMESTAMP: $(date +%Y%m%d%H%M%S)
     GIT_COMMIT: $(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-8)
 
@@ -17,7 +16,7 @@ phases:
 
   pre_build:
     commands:
-      - echo "Pre-build phase started on `date`"
+      - echo "Pre-build phase started on $(date)"
       - echo "Build timestamp: ${BUILD_TIMESTAMP}"
       - echo "Git commit: ${GIT_COMMIT}"
       - echo "Validating CloudFormation templates..."
@@ -29,7 +28,7 @@ phases:
 
   build:
     commands:
-      - echo "Build phase started on `date`"
+      - echo "Build phase started on $(date)"
       
       # Criar diretório para códigos Lambda
       - mkdir -p lambda-code
@@ -64,13 +63,13 @@ phases:
       
       # Criar arquivo de parâmetros para o CloudFormation
       - echo "Creating parameters file..."
-      - cat > parameters.json << EOF
-[
-  {"ParameterKey": "ProjectName", "ParameterValue": "CryptoTradingSystem"},
-  {"ParameterKey": "ArtifactsBucket", "ParameterValue": "${ARTIFACTS_BUCKET}"},
-  {"ParameterKey": "CodeVersion", "ParameterValue": "${GIT_COMMIT}"}
-]
-EOF
+      - cat > parameters.json << 'EOF'
+        [
+          {"ParameterKey": "ProjectName", "ParameterValue": "CryptoTradingSystem"},
+          {"ParameterKey": "ArtifactsBucket", "ParameterValue": "${ARTIFACTS_BUCKET}"},
+          {"ParameterKey": "CodeVersion", "ParameterValue": "${GIT_COMMIT}"}
+        ]
+        EOF
       
       # Empacotar templates CloudFormation
       - echo "Packaging CloudFormation templates..."
@@ -82,7 +81,7 @@ EOF
 
   post_build:
     commands:
-      - echo "Post-build phase started on `date`"
+      - echo "Post-build phase started on $(date)"
       - echo "Build completed successfully"
 
 artifacts:
