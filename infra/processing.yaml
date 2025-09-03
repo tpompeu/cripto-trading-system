@@ -33,6 +33,10 @@ Parameters:
   SpotInstanceSecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
     Description: 'Security group for EC2 Spot instances'
+  CodeVersion:
+    Type: String
+    Description: 'Version identifier for Lambda code to force updates'
+    Default: '1'
 
 Mappings:
   LayerArnMap:
@@ -133,7 +137,7 @@ Resources:
   DataDownloaderFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-DataDownloader'
+      FunctionName: !Sub '${ProjectName}-DataDownloader?version=${CodeVersion}'
       Runtime: python3.11
       Handler: data_downloader.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -165,7 +169,7 @@ Resources:
   OrchestratorFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-Orchestrator'
+      FunctionName: !Sub '${ProjectName}-Orchestrator?version=${CodeVersion}'
       Runtime: python3.11
       Handler: orchestrator.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -198,7 +202,7 @@ Resources:
   LaunchSpotValidatorFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-LaunchSpotValidator'
+      FunctionName: !Sub '${ProjectName}-LaunchSpotValidator?version=${CodeVersion}'
       Runtime: python3.11
       Handler: launch_spot_validator.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -234,7 +238,7 @@ Resources:
   InitiateValidationWindowFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-InitiateValidationWindow'
+      FunctionName: !Sub '${ProjectName}-InitiateValidationWindow?version=${CodeVersion}'
       Runtime: python3.11
       Handler: initiate_validation_window.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -267,7 +271,7 @@ Resources:
   ModelRetrainerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-ModelRetrainer'
+      FunctionName: !Sub '${ProjectName}-ModelRetrainer?version=${CodeVersion}'
       Runtime: python3.11
       Handler: model_retrainer.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -299,7 +303,7 @@ Resources:
   ConfigServiceFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-ConfigService'
+      FunctionName: !Sub '${ProjectName}-ConfigService?version=${CodeVersion}'
       Runtime: python3.11
       Handler: config_service.lambda_handler
       Role: !Ref LambdaExecutionRoleArn

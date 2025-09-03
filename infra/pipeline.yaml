@@ -382,7 +382,8 @@ Resources:
                 ParameterOverrides: !Sub |
                   {
                     "ProjectName": "${ProjectName}",
-                    "ArtifactsBucket": "${ArtifactsBucket}"
+                    "ArtifactsBucket": "${ArtifactsBucket}",
+                    "CodeVersion": "#{BuildArtifact.GIT_COMMIT}"
                   }
               InputArtifacts:
                 - Name: BuildArtifact

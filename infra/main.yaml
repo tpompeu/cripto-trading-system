@@ -46,6 +46,7 @@ Resources:
         LambdaExecutionRoleArn: !GetAtt IAMStack.Outputs.LambdaExecutionRoleArn
         DataBucketName: !GetAtt StorageStack.Outputs.DataBucketName
         ArtifactsBucket: !Ref ArtifactsBucket  # Repassa o bucket de artefatos
+        CodeVersion: !Ref CodeVersion
         VpcId: !GetAtt NetworkStack.Outputs.VpcId
         PrivateSubnet1Id: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
         PrivateSubnet2Id: !GetAtt NetworkStack.Outputs.PrivateSubnet2Id
