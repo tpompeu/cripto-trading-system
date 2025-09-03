@@ -63,7 +63,8 @@ phases:
       
       # Criar arquivo de parâmetros para o CloudFormation
       - echo "Creating parameters file..."
-      - cat > parameters.json << 'EOF'
+      - |
+        cat > parameters.json << 'EOF'
         [
           {"ParameterKey": "ProjectName", "ParameterValue": "CryptoTradingSystem"},
           {"ParameterKey": "ArtifactsBucket", "ParameterValue": "${ARTIFACTS_BUCKET}"},
