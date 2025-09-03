@@ -29,39 +29,25 @@ phases:
   build:
     commands:
       - echo "Build phase started on $(date)"
-      
-      # Criar diretório para códigos Lambda
+      - echo "Creating directory for Lambda code packages"
       - mkdir -p lambda-code
-      
-      # Empacotar cada função Lambda individualmente
       - echo "Packaging data_downloader..."
       - cd src && zip -r ../lambda-code/data_downloader-${GIT_COMMIT}.zip data_downloader.py config_service.py && cd ..
-      
       - echo "Packaging orchestrator..."
       - cd src && zip -r ../lambda-code/orchestrator-${GIT_COMMIT}.zip orchestrator.py config_service.py && cd ..
-      
       - echo "Packaging launch_spot_validator..."
       - cd src && zip -r ../lambda-code/launch_spot_validator-${GIT_COMMIT}.zip launch_spot_validator.py config_service.py && cd ..
-      
       - echo "Packaging initiate_validation_window..."
       - cd src && zip -r ../lambda-code/initiate_validation_window-${GIT_COMMIT}.zip initiate_validation_window.py config_service.py && cd ..
-      
       - echo "Packaging model_retrainer..."
       - cd src && zip -r ../lambda-code/model_retrainer-${GIT_COMMIT}.zip model_retrainer.py config_service.py model_validator.py && cd ..
-      
       - echo "Packaging config_service..."
       - cd src && zip -r ../lambda-code/config_service-${GIT_COMMIT}.zip config_service.py && cd ..
-      
-      # Adicionar módulos de processamento às lambdas que precisam deles
       - echo "Adding processing modules to required lambdas..."
       - cd src && zip -r ../lambda-code/model_retrainer-${GIT_COMMIT}.zip data_processor.py data_validator.py feature_engineering.py model_trainer.py monte_carlo_validator.py performance_monitor.py risk_monitor.py shap_analyzer.py strategy_evaluator.py walk_forward_validator.py && cd ..
       - cd src && zip -r ../lambda-code/orchestrator-${GIT_COMMIT}.zip data_processor.py data_validator.py feature_engineering.py && cd ..
-      
-      # Upload dos códigos Lambda para S3
       - echo "Uploading Lambda code packages to S3..."
       - aws s3 cp lambda-code/ s3://${ARTIFACTS_BUCKET}/lambda-code/ --recursive
-      
-      # Criar arquivo de parâmetros para o CloudFormation
       - echo "Creating parameters file..."
       - |
         cat > parameters.json << 'EOF'
@@ -71,8 +57,6 @@ phases:
           {"ParameterKey": "CodeVersion", "ParameterValue": "${GIT_COMMIT}"}
         ]
         EOF
-      
-      # Empacotar templates CloudFormation
       - echo "Packaging CloudFormation templates..."
       - aws cloudformation package --template-file infra/main.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-main.yaml
       - aws cloudformation package --template-file infra/iam.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-iam.yaml
