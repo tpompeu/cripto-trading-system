@@ -53,7 +53,7 @@ phases:
       - echo "Packaging config_service..."
       - cd src && zip -r ../lambda-code/config_service-${GIT_COMMIT}.zip config_service.py && cd ..
       
-      # Adicionar módulos de processamento
+      # Adicionar módulos de processamento às lambdas que precisam deles
       - echo "Adding processing modules to required lambdas..."
       - cd src && zip -r ../lambda-code/model_retrainer-${GIT_COMMIT}.zip data_processor.py data_validator.py feature_engineering.py model_trainer.py monte_carlo_validator.py performance_monitor.py risk_monitor.py shap_analyzer.py strategy_evaluator.py walk_forward_validator.py && cd ..
       - cd src && zip -r ../lambda-code/orchestrator-${GIT_COMMIT}.zip data_processor.py data_validator.py feature_engineering.py && cd ..
@@ -65,12 +65,12 @@ phases:
       # Criar arquivo de parâmetros para o CloudFormation
       - echo "Creating parameters file..."
       - cat > parameters.json << EOF
-      [
-        {"ParameterKey": "ProjectName", "ParameterValue": "CryptoTradingSystem"},
-        {"ParameterKey": "ArtifactsBucket", "ParameterValue": "${ARTIFACTS_BUCKET}"},
-        {"ParameterKey": "CodeVersion", "ParameterValue": "${GIT_COMMIT}"}
-      ]
-      EOF
+[
+  {"ParameterKey": "ProjectName", "ParameterValue": "CryptoTradingSystem"},
+  {"ParameterKey": "ArtifactsBucket", "ParameterValue": "${ARTIFACTS_BUCKET}"},
+  {"ParameterKey": "CodeVersion", "ParameterValue": "${GIT_COMMIT}"}
+]
+EOF
       
       # Empacotar templates CloudFormation
       - echo "Packaging CloudFormation templates..."
