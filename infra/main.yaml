@@ -9,6 +9,9 @@ Parameters:
   ArtifactsBucket:
     Type: String
     Description: 'S3 bucket for pipeline artifacts'
+  CodeVersion:
+    Type: String
+    Description: 'Git commit hash for the code version'
 
 Resources:
 
