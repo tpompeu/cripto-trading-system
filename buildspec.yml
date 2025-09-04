@@ -49,11 +49,14 @@ phases:
       - echo "Uploading Lambda code packages to S3..."
       - aws s3 cp lambda-code/ s3://${ARTIFACTS_BUCKET}/lambda-code/ --recursive
       - echo "Creating parameters file..."
-      - echo '[' > parameters.json
-      - echo '  {"ParameterKey": "ProjectName", "ParameterValue": "CryptoTradingSystem"},' >> parameters.json
-      - echo "  {\"ParameterKey\": \"ArtifactsBucket\", \"ParameterValue\": \"${ARTIFACTS_BUCKET}\"}," >> parameters.json
-      - echo "  {\"ParameterKey\": \"CodeVersion\", \"ParameterValue\": \"${GIT_COMMIT}\"}" >> parameters.json
-      - echo ']' >> parameters.json
+      - |
+        cat > parameters.json << EOF
+        [
+          {"ParameterKey": "ProjectName", "ParameterValue": "CryptoTradingSystem"},
+          {"ParameterKey": "ArtifactsBucket", "ParameterValue": "${ARTIFACTS_BUCKET}"},
+          {"ParameterKey": "CodeVersion", "ParameterValue": "${GIT_COMMIT}"}
+        ]
+        EOF
       - echo "Packaging CloudFormation templates..."
       - aws cloudformation package --template-file infra/main.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-main.yaml
       - aws cloudformation package --template-file infra/iam.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-iam.yaml
