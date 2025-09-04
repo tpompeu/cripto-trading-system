@@ -51,8 +51,8 @@ phases:
       - echo "Creating parameters file..."
       - echo '[' > parameters.json
       - echo '  {"ParameterKey": "ProjectName", "ParameterValue": "CryptoTradingSystem"},' >> parameters.json
-      - echo '  {"ParameterKey": "ArtifactsBucket", "ParameterValue": "'"${ARTIFACTS_BUCKET}"'"},' >> parameters.json
-      - echo '  {"ParameterKey": "CodeVersion", "ParameterValue": "'"${GIT_COMMIT}"'"}' >> parameters.json
+      - echo "  {\"ParameterKey\": \"ArtifactsBucket\", \"ParameterValue\": \"${ARTIFACTS_BUCKET}\"}," >> parameters.json
+      - echo "  {\"ParameterKey\": \"CodeVersion\", \"ParameterValue\": \"${GIT_COMMIT}\"}" >> parameters.json
       - echo ']' >> parameters.json
       - echo "Packaging CloudFormation templates..."
       - aws cloudformation package --template-file infra/main.yaml --s3-bucket ${ARTIFACTS_BUCKET} --s3-prefix "cloudformation-templates" --output-template-file packaged-main.yaml
