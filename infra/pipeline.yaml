@@ -18,7 +18,10 @@ Parameters:
   ArtifactsBucket:
     Type: String
     Description: 'S3 bucket for pipeline artifacts. Must be created manually beforehand.'
-
+  GitHubOAuthToken:
+    Type: String
+    Description: 'GitHub OAuth token'
+    NoEcho: true
 
 Resources:
 
@@ -234,13 +237,6 @@ Resources:
                   - 'scheduler:ListSchedules'
                 Resource: '*' # Permissões amplas necessárias para o CFN gerenciar os recursos
 
-  # Conexão com o GitHub via CodeStar Connections
-  GitHubConnection:
-    Type: AWS::CodeStarConnections::Connection
-    Properties:
-      ConnectionName: !Sub '${ProjectName}-GitConnect'
-      ProviderType: GitHub
-
   # =====================================================
   # ROLE PARA CODEPIPELINE
   # =====================================================
@@ -255,6 +251,7 @@ Resources:
           - Effect: Allow
             Principal:
               Service: codepipeline.amazonaws.com
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
             Action: sts:AssumeRole
       Policies:
         - PolicyName: !Sub '${ProjectName}-CodePipelinePolicy'
@@ -269,14 +266,12 @@ Resources:
                   - 's3:ListBucket'
                   - 's3:GetBucketLocation'
                 Resource: '*'
-              
               # Permissões CodeBuild
               - Effect: Allow
                 Action:
                   - 'codebuild:BatchGetBuilds'
                   - 'codebuild:StartBuild'
                 Resource: '*'
-              
               # Permissões CloudFormation
               - Effect: Allow
                 Action:
@@ -287,24 +282,12 @@ Resources:
                   - 'cloudformation:DescribeStackResources'
                   - 'cloudformation:GetTemplate'
                   - 'cloudformation:ValidateTemplate'
-                Resource: '*'
-              
+                Resource: '*'  
               # Permissões IAM
               - Effect: Allow
                 Action:
                   - 'iam:PassRole'
-                Resource: '*'
-            # NOVAS PERMISSÕES: CodeStar Connections
-              - Effect: Allow
-                Action:
-                  - 'codestar-connections:UseConnection'
-                Resource: !Sub 'arn:aws:codestar-connections:${AWS::Region}:${AWS::AccountId}:connection/*'
-              - Effect: Allow
-                Action:
-                  - 'codestar-connections:GetConnection'
-                  - 'codestar-connections:ListConnections'
-                  - 'codestar-connections:PassConnection'
-                Resource: '*'
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${ProjectName}-*'
   # Projeto do CodeBuild
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
@@ -342,13 +325,14 @@ Resources:
             - Name: GitHub_Source
               ActionTypeId:
                 Category: Source
-                Owner: AWS
-                Provider: CodeStarSourceConnection
-                Version: '1'
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: 1
               Configuration:
-                ConnectionArn: !Ref GitHubConnection
-                FullRepositoryId: !Sub '${GitHubOwner}/${GitHubRepo}'
-                BranchName: !Ref GitHubBranch
+                Owner: !Ref GitHubOwner
+                Repo: !Ref GitHubRepo
+                Branch: !Ref GitHubBranch
+                OAuthToken: !Ref GitHubOAuthToken
               OutputArtifacts:
                 - Name: SourceArtifact
         - Name: Build
@@ -382,8 +366,7 @@ Resources:
                 ParameterOverrides: !Sub |
                   {
                     "ProjectName": "${ProjectName}",
-                    "ArtifactsBucket": "${ArtifactsBucket}",
-                    "CodeVersion": "#{SourceVariables.CommitId}"
+                    "ArtifactsBucket": "${ArtifactsBucket}"
                   }
               InputArtifacts:
                 - Name: BuildArtifact
