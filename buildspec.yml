@@ -17,8 +17,6 @@ phases:
   pre_build:
     commands:
       - echo "Pre-build phase started on $(date)"
-      - echo "Build timestamp: ${BUILD_TIMESTAMP}"
-      - echo "Git commit: ${GIT_COMMIT}"
       - echo "Validating CloudFormation templates..."
       - aws cloudformation validate-template --template-body file://infra/main.yaml
       - aws cloudformation validate-template --template-body file://infra/iam.yaml
