@@ -383,7 +383,7 @@ Resources:
                   {
                     "ProjectName": "${ProjectName}",
                     "ArtifactsBucket": "${ArtifactsBucket}",
-                    "CodeVersion": "#{BuildArtifact.GIT_COMMIT}"
+                    "CodeVersion": "#{SourceVariables.CommitId}"
                   }
               InputArtifacts:
                 - Name: BuildArtifact

@@ -137,7 +137,7 @@ Resources:
   DataDownloaderFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-DataDownloader?version=${CodeVersion}'
+      FunctionName: !Sub '${ProjectName}-DataDownloader'
       Runtime: python3.11
       Handler: data_downloader.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -169,7 +169,7 @@ Resources:
   OrchestratorFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-Orchestrator?version=${CodeVersion}'
+      FunctionName: !Sub '${ProjectName}-Orchestrator'
       Runtime: python3.11
       Handler: orchestrator.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -202,7 +202,7 @@ Resources:
   LaunchSpotValidatorFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-LaunchSpotValidator?version=${CodeVersion}'
+      FunctionName: !Sub '${ProjectName}-LaunchSpotValidator'
       Runtime: python3.11
       Handler: launch_spot_validator.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -238,7 +238,7 @@ Resources:
   InitiateValidationWindowFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-InitiateValidationWindow?version=${CodeVersion}'
+      FunctionName: !Sub '${ProjectName}-InitiateValidationWindow'
       Runtime: python3.11
       Handler: initiate_validation_window.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -271,7 +271,7 @@ Resources:
   ModelRetrainerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-ModelRetrainer?version=${CodeVersion}'
+      FunctionName: !Sub '${ProjectName}-ModelRetrainer'
       Runtime: python3.11
       Handler: model_retrainer.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
@@ -303,7 +303,7 @@ Resources:
   ConfigServiceFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${ProjectName}-ConfigService?version=${CodeVersion}'
+      FunctionName: !Sub '${ProjectName}-ConfigService'
       Runtime: python3.11
       Handler: config_service.lambda_handler
       Role: !Ref LambdaExecutionRoleArn
