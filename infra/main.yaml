@@ -61,6 +61,7 @@ Resources:
       - StorageStack
       - NetworkStack
 
+
 Outputs:
   DataBucketName:
     Description: 'S3 Bucket for data storage'
